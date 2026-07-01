@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Question - ExamSphere{% endblock %}
+{% block head %}
+<!-- Custom styles to hide standard elements during exam -->
+<style>
+    /* Hide navigation bar links during the active exam attempt */
+    .navbar-nav {
+        display: none !important;
+    }
+    /* Hide brand link text or make it unclickable */
+    .navbar-brand {
+        pointer-events: none;
+    }
+    footer {
+        display: none !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- Exam Dashboard Header -->
+        <div class="card-glass p-4 mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <span class="text-secondary fw-semibold uppercase tracking-wider" style="font-size: 0.85rem; letter-spacing: 0.05em;">Active Exam Session</span>
+                <h4 class="mb-0 text-white mt-1">{{ progress_text }}</h4>
+            </div>
+            
+            <!-- Timer Clock -->
+            <div class="timer-container" id="exam-timer-box">
+                <i class="fa-solid fa-hourglass-half"></i> Time Remaining: 
+                <span id="countdown-timer">--:--</span>
+            </div>
+        </div>
+
+        <!-- Question Box -->
+        <div class="card-glass p-5 border-secondary">
+            <form id="question-submit-form" action="{{ url_for('exam.submit_answer') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="question_id" value="{{ question.id }}">
+
+                <!-- Question Text -->
+                <h3 class="mb-4 text-white font-weight-bold" style="line-height: 1.5; font-size: 1.35rem;">
+                    {{ question.question_text }}
+                </h3>
+
+                <!-- MCQ Option Labels -->
+                <div class="mcq-option-container">
+                    <input type="radio" name="answer" value="A" id="optionA" class="mcq-radio-input">
+                    <label for="optionA" class="mcq-option-label">
+                        <span class="mcq-badge">A</span>
+                        <span class="option-text">{{ question.option_a }}</span>
+                    </label>
+
+                    <input type="radio" name="answer" value="B" id="optionB" class="mcq-radio-input">
+                    <label for="optionB" class="mcq-option-label">
+                        <span class="mcq-badge">B</span>
+                        <span class="option-text">{{ question.option_b }}</span>
+                    </label>
+
+                    <input type="radio" name="answer" value="C" id="optionC" class="mcq-radio-input">
+                    <label for="optionC" class="mcq-option-label">
+                        <span class="mcq-badge">C</span>
+                        <span class="option-text">{{ question.option_c }}</span>
+                    </label>
+
+                    <input type="radio" name="answer" value="D" id="optionD" class="mcq-radio-input">
+                    <label for="optionD" class="mcq-option-label">
+                        <span class="mcq-badge">D</span>
+                        <span class="option-text">{{ question.option_d }}</span>
+                    </label>
+                </div>
+
+                <!-- Submit Action -->
+                <div class="mt-5 border-top border-secondary pt-4">
+                    <button type="submit" id="submit-btn" class="btn btn-primary-custom btn-lg w-100 py-3 font-weight-bold" disabled>
+                        Submit Answer <i class="fa-solid fa-arrow-right ms-2"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Import Exam Security Engine -->
+<script src="{{ url_for('static', filename='js/exam_security.js') }}?v=1.2"></script>
+<script>
+    // Enable/Disable Submit button based on selection
+    const radioInputs = document.querySelectorAll('.mcq-radio-input');
+    const submitBtn = document.getElementById('submit-btn');
+    const form = document.getElementById('question-submit-form');
+    
+    // Watch for radio button changes to enable submit button
+    function setupRadioListeners() {
+        const currentRadios = document.querySelectorAll('.mcq-radio-input');
+        currentRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                submitBtn.disabled = false;
+            });
+        });
+    }
+
+    setupRadioListeners();
+
+    // AJAX Form submission to prevent fullscreen exits
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        submitBtn.disabled = true;
+        const formData = new FormData(form);
+        
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => { throw new Error(data.error || 'Submission failed'); });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.completed) {
+                // Exit fullscreen and redirect
+                window.location.href = data.redirect_url;
+            } else {
+                // Update DOM with next question details
+                
+                // 1. Update progress text
+                document.querySelector('h4.text-white').innerText = data.progress_text;
+                
+                // 2. Update question text
+                document.querySelector('h3.text-white').innerText = data.question_text;
+                
+                // 3. Update hidden input question_id
+                document.querySelector('input[name="question_id"]').value = data.question_id;
+                
+                // 4. Update MCQ option texts
+                document.querySelectorAll('.mcq-option-label').forEach(label => {
+                    const badgeValue = label.querySelector('.mcq-badge').innerText;
+                    const optionTextEl = label.querySelector('.option-text');
+                    
+                    if (badgeValue === 'A') optionTextEl.innerText = data.option_a;
+                    else if (badgeValue === 'B') optionTextEl.innerText = data.option_b;
+                    else if (badgeValue === 'C') optionTextEl.innerText = data.option_c;
+                    else if (badgeValue === 'D') optionTextEl.innerText = data.option_d;
+                });
+                
+                // 5. Reset all radio buttons
+                const radios = document.querySelectorAll('.mcq-radio-input');
+                radios.forEach(radio => {
+                    radio.checked = false;
+                });
+                
+                // 6. Setup listeners again since DOM option elements remain
+                setupRadioListeners();
+                
+                // Keep submit button disabled until new selection is made
+                submitBtn.disabled = true;
+            }
+        })
+        .catch(err => {
+            alert('Error: ' + err.message);
+            submitBtn.disabled = false;
+        });
+    });
+
+    // Run Security Checks and Countdown Timer
+    document.addEventListener('DOMContentLoaded', () => {
+        const remainingSecs = {{ remaining_seconds }};
+        const maxViolations = {{ exam_config.total_questions // 10 or 3 }}; // dynamic rule: 10% of questions or default 3
+        
+        // Configure security thresholds
+        ExamSecurity.maxViolations = maxViolations;
+        
+        // Initialize proctoring lock and countdown
+        ExamSecurity.initActiveExam(remainingSecs, 'countdown-timer', 'question-submit-form');
+        
+        // Ensure fullscreen is active, prompt if not
+        if (!ExamSecurity.isFullscreenActive()) {
+            ExamSecurity.promptReEnterFullscreen();
+        }
+    });
+</script>
+{% endblock %}

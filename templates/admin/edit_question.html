@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - ExamSphere{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex align-items-center mb-4">
+            <a href="{{ url_for('admin.list_questions') }}" class="btn btn-outline-custom me-3 py-1.5 px-3">
+                <i class="fa-solid fa-arrow-left"></i> Back
+            </a>
+            <h1 class="h2 mb-0">{{ title }}</h1>
+        </div>
+
+        <div class="card-glass p-5">
+            <form method="POST" action="">
+                {{ form.hidden_tag() }}
+                
+                <div class="mb-3">
+                    <label for="question_text" class="form-label form-label-custom">Question Text</label>
+                    {{ form.question_text(class="form-control form-control-custom" + (" is-invalid" if form.question_text.errors else ""), rows="3", placeholder="Enter the complete question prompt here...") }}
+                    {% for error in form.question_text.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label for="option_a" class="form-label form-label-custom">Option A</label>
+                        {{ form.option_a(class="form-control form-control-custom" + (" is-invalid" if form.option_a.errors else ""), placeholder="Option A text") }}
+                        {% for error in form.option_a.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="option_b" class="form-label form-label-custom">Option B</label>
+                        {{ form.option_b(class="form-control form-control-custom" + (" is-invalid" if form.option_b.errors else ""), placeholder="Option B text") }}
+                        {% for error in form.option_b.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label for="option_c" class="form-label form-label-custom">Option C</label>
+                        {{ form.option_c(class="form-control form-control-custom" + (" is-invalid" if form.option_c.errors else ""), placeholder="Option C text") }}
+                        {% for error in form.option_c.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="option_d" class="form-label form-label-custom">Option D</label>
+                        {{ form.option_d(class="form-control form-control-custom" + (" is-invalid" if form.option_d.errors else ""), placeholder="Option D text") }}
+                        {% for error in form.option_d.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label for="correct_answer" class="form-label form-label-custom">Correct Answer</label>
+                        {{ form.correct_answer(class="form-select form-control-custom" + (" is-invalid" if form.correct_answer.errors else "")) }}
+                        {% for error in form.correct_answer.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-4">
+                        <label for="difficulty_level" class="form-label form-label-custom">Difficulty Level</label>
+                        {{ form.difficulty_level(class="form-select form-control-custom" + (" is-invalid" if form.difficulty_level.errors else "")) }}
+                        {% for error in form.difficulty_level.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-4">
+                        <label for="subject" class="form-label form-label-custom">Subject / Topic</label>
+                        {{ form.subject(class="form-control form-control-custom" + (" is-invalid" if form.subject.errors else ""), placeholder="e.g. Operating Systems") }}
+                        {% for error in form.subject.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary-custom w-100 py-2.5">
+                    <i class="fa-solid fa-save me-2"></i> Save Question Details
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

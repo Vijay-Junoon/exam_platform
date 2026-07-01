@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Register - ExamSphere{% endblock %}
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="col-md-6 col-lg-5">
+        <div class="card-glass p-5">
+            <div class="text-center mb-4">
+                <i class="fa-solid fa-user-plus text-primary mb-3" style="font-size: 2.5rem; text-shadow: 0 0 20px var(--primary-glow);"></i>
+                <h2>Teacher Registration</h2>
+                <p class="text-secondary">Create a teacher account to take examinations</p>
+            </div>
+            
+            <form method="POST" action="" novalidate>
+                {{ form.hidden_tag() }}
+                
+                <div class="mb-3">
+                    <label for="name" class="form-label form-label-custom">
+                        <i class="fa-regular fa-user me-1"></i> Full Name
+                    </label>
+                    {{ form.name(class="form-control form-control-custom" + (" is-invalid" if form.name.errors else ""), placeholder="Jane Doe") }}
+                    {% for error in form.name.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="email" class="form-label form-label-custom">
+                        <i class="fa-regular fa-envelope me-1"></i> Email Address
+                    </label>
+                    {{ form.email(class="form-control form-control-custom" + (" is-invalid" if form.email.errors else ""), placeholder="name@domain.com") }}
+                    {% for error in form.email.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="password" class="form-label form-label-custom">
+                        <i class="fa-solid fa-key me-1"></i> Password
+                    </label>
+                    {{ form.password(class="form-control form-control-custom" + (" is-invalid" if form.password.errors else ""), placeholder="At least 6 characters") }}
+                    {% for error in form.password.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                
+                <div class="mb-4">
+                    <label for="confirm_password" class="form-label form-label-custom">
+                        <i class="fa-solid fa-circle-check me-1"></i> Confirm Password
+                    </label>
+                    {{ form.confirm_password(class="form-control form-control-custom" + (" is-invalid" if form.confirm_password.errors else ""), placeholder="Confirm password") }}
+                    {% for error in form.confirm_password.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                
+                <button type="submit" class="btn btn-primary-custom w-100 py-2.5">
+                    <i class="fa-solid fa-user-plus me-2"></i> Register Account
+                </button>
+            </form>
+            
+            <div class="text-center mt-4">
+                <p class="mb-0 text-secondary" style="font-size: 0.9rem;">
+                    Already have an account? 
+                    <a href="{{ url_for('auth.login') }}" class="text-primary font-weight-bold text-decoration-none">Log In here</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

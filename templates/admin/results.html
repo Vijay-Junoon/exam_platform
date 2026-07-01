@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Teacher Results - ExamSphere{% endblock %}
+{% block content %}
+<div class="row mb-5">
+    <div class="col-12">
+        <h1 class="h2 mb-2">Teacher Examination Results</h1>
+        <p class="text-secondary">Track candidate scores, elapsed exam durations, focus violation logs, and manage borderline scoring overrides.</p>
+    </div>
+</div>
+
+<div class="card-glass p-4">
+    {% if not attempts %}
+        <div class="text-center py-5">
+            <i class="fa-solid fa-graduation-cap text-muted fs-1 mb-3"></i>
+            <h4 class="text-secondary">No exam attempts recorded yet</h4>
+            <p class="text-muted">Once teachers complete their examinations, their results will be compiled here.</p>
+        </div>
+    {% else %}
+        <div class="table-responsive">
+            <table class="table table-custom text-light align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Candidate</th>
+                        <th>Date attempted</th>
+                        <th class="text-center">Score</th>
+                        <th class="text-center">Percentage</th>
+                        <th class="text-center">Violations</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end">Manual Override</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for attempt in attempts %}
+                        <tr>
+                            <td>
+                                <div class="font-weight-bold text-white fs-6">{{ attempt.user.name }}</div>
+                                <small class="text-secondary">{{ attempt.user.email }}</small>
+                            </td>
+                            <td>
+                                <span class="text-white">{{ attempt.start_time.strftime('%Y-%m-%d %H:%M') }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="font-weight-bold text-white fs-6">{{ attempt.score }}</span>
+                                <span class="text-secondary">/ {{ attempt.exam_questions|length }}</span>
+                            </td>
+                            <td class="text-center font-weight-bold text-white">{{ attempt.percentage_score }}%</td>
+                            <td class="text-center">
+                                {% if attempt.violation_count > 0 %}
+                                    <span class="badge bg-danger-subtle text-danger px-3 py-2" style="border: 1px solid rgba(239, 68, 68, 0.3);">
+                                        <i class="fa-solid fa-triangle-exclamation me-1"></i> {{ attempt.violation_count }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-success"><i class="fa-solid fa-circle-check"></i> Clean</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if attempt.passed %}
+                                    {% if attempt.manually_passed %}
+                                        <span class="badge bg-info-subtle text-info px-3 py-2 border border-info-subtle">
+                                            <i class="fa-solid fa-user-shield me-1"></i> Passed (Override)
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-success-subtle text-success px-3 py-2 border border-success-subtle">
+                                            <i class="fa-solid fa-circle-check me-1"></i> Passed
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-danger-subtle text-danger px-3 py-2 border border-danger-subtle">
+                                        <i class="fa-solid fa-circle-xmark me-1"></i> Failed
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {% if not attempt.passed or attempt.manually_passed %}
+                                    <!-- Borderline highlight class if failing score is near 40% (e.g. 30%-39.9%) -->
+                                    {% set is_borderline = attempt.percentage_score >= 30.0 and attempt.percentage_score < 40.0 %}
+                                    
+                                    <form action="{{ url_for('admin.toggle_pass', attempt_id=attempt.id) }}" method="POST">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        
+                                        {% if attempt.manually_passed %}
+                                            <button type="submit" class="btn btn-sm btn-outline-custom border-warning text-warning">
+                                                <i class="fa-solid fa-rotate-left me-1"></i> Revoke Pass
+                                            </button>
+                                        {% else %}
+                                            <button type="submit" class="btn btn-sm {% if is_borderline %}btn-warning text-dark font-weight-bold{% else %}btn-outline-custom{% endif %}">
+                                                <i class="fa-solid fa-user-check me-1"></i> Manually Pass
+                                            </button>
+                                        {% endif %}
+                                    </form>
+                                {% else %}
+                                    <span class="text-muted" style="font-size: 0.85rem;">Standard Pass</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

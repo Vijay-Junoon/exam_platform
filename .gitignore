@@ -1,0 +1,23 @@
+# Virtual environment
+venv/
+ENV/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Local configuration and keys (CRITICAL: Do not leak secrets)
+.env
+instance/
+
+# Local databases
+*.db
+*.sqlite
+
+# OS specific files
+.DS_Store
+Thumbs.db

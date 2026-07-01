@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Manage Questions - ExamSphere{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-5 gap-3">
+    <div>
+        <h1 class="h2 mb-1">Question Bank Repository</h1>
+        <p class="text-secondary mb-0">Create, review, edit, or delete exam questions manually or generate them using AI.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('admin.add_question') }}" class="btn btn-primary-custom">
+            <i class="fa-solid fa-plus me-1"></i> Add Manually
+        </a>
+        <a href="{{ url_for('admin.generate_questions') }}" class="btn btn-primary-custom" style="background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);">
+            <i class="fa-solid fa-robot me-1"></i> Generate with AI
+        </a>
+    </div>
+</div>
+
+<!-- Filters Panel -->
+<div class="card-glass p-4 mb-4">
+    <form method="GET" action="{{ url_for('admin.list_questions') }}" class="row g-3 align-items-end">
+        <div class="col-md-4 col-sm-6">
+            <label for="difficulty" class="form-label form-label-custom">Filter by Difficulty</label>
+            <select name="difficulty" id="difficulty" class="form-select form-control-custom">
+                <option value="all" {% if current_difficulty == 'all' %}selected{% endif %}>All Difficulties</option>
+                <option value="easy" {% if current_difficulty == 'easy' %}selected{% endif %}>Easy</option>
+                <option value="medium" {% if current_difficulty == 'medium' %}selected{% endif %}>Medium</option>
+                <option value="complex" {% if current_difficulty == 'complex' %}selected{% endif %}>Complex</option>
+                <option value="very_complex" {% if current_difficulty == 'very_complex' %}selected{% endif %}>Very Complex</option>
+            </select>
+        </div>
+        
+        <div class="col-md-4 col-sm-6">
+            <label for="subject" class="form-label form-label-custom">Filter by Subject</label>
+            <select name="subject" id="subject" class="form-select form-control-custom">
+                <option value="all" {% if current_subject == 'all' %}selected{% endif %}>All Subjects</option>
+                {% for sub in subjects %}
+                    <option value="{{ sub }}" {% if current_subject == sub %}selected{% endif %}>{{ sub }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-outline-custom w-100 py-2">
+                    <i class="fa-solid fa-filter me-1"></i> Apply Filters
+                </button>
+                <a href="{{ url_for('admin.list_questions') }}" class="btn btn-outline-custom w-100 py-2">
+                    <i class="fa-solid fa-rotate-left me-1"></i> Reset
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Question List -->
+<div class="card-glass p-4">
+    {% if not questions %}
+        <div class="text-center py-5">
+            <i class="fa-solid fa-folder-open text-muted fs-1 mb-3"></i>
+            <h4 class="text-secondary">No questions found</h4>
+            <p class="text-muted">Create a question manually or using the AI generator to get started.</p>
+        </div>
+    {% else %}
+        <div class="table-responsive">
+            <table class="table table-custom text-light align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 45%;">Question Details</th>
+                        <th style="width: 15%;">Subject</th>
+                        <th style="width: 15%;">Difficulty</th>
+                        <th style="width: 10%;" class="text-center">Key</th>
+                        <th style="width: 15%;" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for q in questions %}
+                        <tr>
+                            <td>
+                                <div class="font-weight-bold text-white mb-2" style="font-size: 1.05rem;">{{ q.question_text }}</div>
+                                <div class="row g-2 text-muted" style="font-size: 0.85rem;">
+                                    <div class="col-sm-6"><strong>A)</strong> {{ q.option_a }}</div>
+                                    <div class="col-sm-6"><strong>B)</strong> {{ q.option_b }}</div>
+                                    <div class="col-sm-6"><strong>C)</strong> {{ q.option_c }}</div>
+                                    <div class="col-sm-6"><strong>D)</strong> {{ q.option_d }}</div>
+                                </div>
+                            </td>
+                            <td><span class="text-white">{{ q.subject }}</span></td>
+                            <td>
+                                <span class="badge badge-difficulty badge-{{ q.difficulty_level }}">
+                                    {{ q.difficulty_level | replace('_', ' ') }}
+                                </span>
+                            </td>
+                            <td class="text-center"><span class="badge bg-primary px-3 py-2 font-weight-bold" style="font-size: 0.9rem;">{{ q.correct_answer }}</span></td>
+                            <td class="text-end">
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a href="{{ url_for('admin.edit_question', id=q.id) }}" class="btn btn-sm btn-outline-custom" title="Edit Question">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </a>
+                                    
+                                    <!-- Secure Delete via POST -->
+                                    <form action="{{ url_for('admin.delete_question', id=q.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to permanently delete this question?');">
+                                        <!-- Include CSRF token since form is present -->
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-custom border-danger text-danger" title="Delete Question">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

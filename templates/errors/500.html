@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}System Error - ExamSphere{% endblock %}
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 50vh;">
+    <div class="col-md-6 text-center">
+        <div class="card-glass p-5 border-danger">
+            <i class="fa-solid fa-triangle-exclamation text-danger mb-4" style="font-size: 4rem;"></i>
+            <h1 class="display-5 text-danger mb-3">500 - Server Error</h1>
+            <p class="text-secondary mb-4">An unexpected system error occurred on our end. Please try again later or contact support.</p>
+            <a href="{{ url_for('exam.index') }}" class="btn btn-primary-custom">Return to Home</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
