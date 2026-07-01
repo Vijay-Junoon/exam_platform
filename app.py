@@ -210,6 +210,8 @@ def create_app():
         
         print("Database seeding completed.")
 
+    return app
+
 # Instantiate the global application object for Gunicorn / Vercel
 app = create_app()
 
