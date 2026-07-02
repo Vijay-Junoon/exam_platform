@@ -33,40 +33,68 @@ def index():
 @login_required
 @teacher_required
 def intro():
-    """Instructions page before starting the exam. Explains fullscreen requirements."""
+    """Renders the listing of all available exams."""
     # Check if there is an active exam running already
     active = ExamService.get_active_attempt(current_user.id)
     if active:
         flash("Resuming your active exam attempt.", "info")
         return redirect(url_for('exam.show_question'))
 
-    config = ExamService.get_or_create_config()
+    # Load all exams
+    from models import Exam, Question
+    exams = Exam.query.order_by(Exam.created_at.desc()).all()
     
-    # Check if we have enough questions in the database
-    from models import Question
-    total_q = Question.query.count()
-    can_start = total_q >= config.total_questions
+    # Check question pool size per exam subject
+    subject_counts = {}
+    from sqlalchemy import func
+    counts = db.session.query(Question.subject, func.count(Question.id)).group_by(Question.subject).all()
+    for sub, count in counts:
+        subject_counts[sub] = count
 
     # List past attempts for this teacher
     past_attempts = ExamAttempt.query.filter_by(user_id=current_user.id, completed=True)\
                                       .order_by(ExamAttempt.end_time.desc()).all()
 
     return render_template('exam/intro.html', 
-                           exam_config=config, 
-                           can_start=can_start, 
-                           total_available=total_q,
-                           past_attempts=past_attempts)
+                           exams=exams, 
+                           subject_counts=subject_counts,
+                           past_attempts=past_attempts,
+                           exam=None)
 
 
-@exam_bp.route('/exam/start', methods=['POST'])
+@exam_bp.route('/exam/intro/<int:exam_id>')
 @login_required
 @teacher_required
-def start_exam():
+def exam_instructions(exam_id):
+    """Instructions page before starting a specific exam. Explains fullscreen requirements."""
+    # Check if there is an active exam running already
+    active = ExamService.get_active_attempt(current_user.id)
+    if active:
+        flash("Resuming your active exam attempt.", "info")
+        return redirect(url_for('exam.show_question'))
+
+    from models import Exam, Question
+    exam = Exam.query.get_or_404(exam_id)
+    
+    # Check if we have enough questions in the database for this exam's subject
+    total_q = Question.query.filter_by(subject=exam.subject).count()
+    can_start = total_q >= exam.total_questions
+
+    return render_template('exam/intro.html', 
+                           exam=exam, 
+                           can_start=can_start, 
+                           total_available=total_q)
+
+
+@exam_bp.route('/exam/start/<int:exam_id>', methods=['POST'])
+@login_required
+@teacher_required
+def start_exam(exam_id):
     """Starts the exam, allocates questions, and redirects to the first question."""
-    attempt, error = ExamService.create_exam_attempt(current_user.id)
+    attempt, error = ExamService.create_exam_attempt(current_user.id, exam_id)
     if error:
         flash(error, 'danger')
-        return redirect(url_for('exam.intro'))
+        return redirect(url_for('exam.exam_instructions', exam_id=exam_id))
         
     return redirect(url_for('exam.show_question'))
 

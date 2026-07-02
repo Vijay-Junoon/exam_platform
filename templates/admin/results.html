@@ -4,99 +4,208 @@
 <div class="row mb-5">
     <div class="col-12">
         <h1 class="h2 mb-2">Teacher Examination Results</h1>
-        <p class="text-secondary">Track candidate scores, elapsed exam durations, focus violation logs, and manage borderline scoring overrides.</p>
+        <p class="text-secondary">Track candidate scores, elapsed exam durations, focus violation logs, and manage borderline scoring overrides grouped by examination title.</p>
     </div>
 </div>
 
-<div class="card-glass p-4">
-    {% if not attempts %}
+{% set total_attempts_count = legacy_attempts|length %}
+{% for exam, attempts in grouped_attempts %}
+    {% set total_attempts_count = total_attempts_count + attempts|length %}
+{% endfor %}
+
+{% if total_attempts_count == 0 %}
+    <div class="card-glass p-5">
         <div class="text-center py-5">
             <i class="fa-solid fa-graduation-cap text-muted fs-1 mb-3"></i>
             <h4 class="text-secondary">No exam attempts recorded yet</h4>
             <p class="text-muted">Once teachers complete their examinations, their results will be compiled here.</p>
         </div>
-    {% else %}
-        <div class="table-responsive">
-            <table class="table table-custom text-light align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th>Candidate</th>
-                        <th>Date attempted</th>
-                        <th class="text-center">Score</th>
-                        <th class="text-center">Percentage</th>
-                        <th class="text-center">Violations</th>
-                        <th class="text-center">Status</th>
-                        <th class="text-end">Manual Override</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for attempt in attempts %}
+    </div>
+{% else %}
+    <!-- Loop through each exam group -->
+    {% for exam, attempts in grouped_attempts %}
+        {% if attempts %}
+            <div class="card-glass p-4 mb-5">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
+                    <div>
+                        <h3 class="h4 text-white mb-1"><i class="fa-solid fa-file-signature text-primary me-2"></i>{{ exam.title }}</h3>
+                        <p class="text-secondary mb-0">Subject: <strong>{{ exam.subject }}</strong> | Duration: {{ exam.exam_duration }} mins | Questions: {{ exam.total_questions }}</p>
+                    </div>
+                    <span class="badge bg-primary px-3 py-2 font-weight-bold fs-7">{{ attempts|length }} Attempts</span>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-custom text-light align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">Candidate</th>
+                                <th style="width: 20%;">Date attempted</th>
+                                <th style="width: 10%;" class="text-center">Score</th>
+                                <th style="width: 10%;" class="text-center">Percentage</th>
+                                <th style="width: 10%;" class="text-center">Violations</th>
+                                <th style="width: 12%;" class="text-center">Status</th>
+                                <th style="width: 13%;" class="text-end">Manual Override</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for attempt in attempts %}
+                                <tr>
+                                    <td>
+                                        <div class="font-weight-bold text-white fs-6">{{ attempt.user.name }}</div>
+                                        <small class="text-secondary">{{ attempt.user.email }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="text-white">{{ attempt.start_time.strftime('%Y-%m-%d %H:%M') }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="font-weight-bold text-white fs-6">{{ attempt.score }}</span>
+                                        <span class="text-secondary">/ {{ attempt.exam_questions|length }}</span>
+                                    </td>
+                                    <td class="text-center font-weight-bold text-white">{{ attempt.percentage_score }}%</td>
+                                    <td class="text-center">
+                                        {% if attempt.violation_count > 0 %}
+                                            <span class="badge bg-danger-subtle text-danger px-3 py-2" style="border: 1px solid rgba(239, 68, 68, 0.3);">
+                                                <i class="fa-solid fa-triangle-exclamation me-1"></i> {{ attempt.violation_count }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-success"><i class="fa-solid fa-circle-check"></i> Clean</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if attempt.passed %}
+                                            {% if attempt.manually_passed %}
+                                                <span class="badge bg-info-subtle text-info px-3 py-2 border border-info-subtle">
+                                                    <i class="fa-solid fa-user-shield me-1"></i> Passed (Override)
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-success-subtle text-success px-3 py-2 border border-success-subtle">
+                                                    <i class="fa-solid fa-circle-check me-1"></i> Passed
+                                                </span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-danger-subtle text-danger px-3 py-2 border border-danger-subtle">
+                                                <i class="fa-solid fa-circle-xmark me-1"></i> Failed
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if not attempt.passed or attempt.manually_passed %}
+                                            {% set is_borderline = attempt.percentage_score >= 30.0 and attempt.percentage_score < 40.0 %}
+                                            <form action="{{ url_for('admin.toggle_pass', attempt_id=attempt.id) }}" method="POST">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                {% if attempt.manually_passed %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-custom border-warning text-warning">
+                                                        <i class="fa-solid fa-rotate-left me-1"></i> Revoke
+                                                    </button>
+                                                {% else %}
+                                                    <button type="submit" class="btn btn-sm {% if is_borderline %}btn-warning text-dark font-weight-bold{% else %}btn-outline-custom{% endif %}">
+                                                        <i class="fa-solid fa-user-check me-1"></i> Pass
+                                                    </button>
+                                                {% endif %}
+                                            </form>
+                                        {% else %}
+                                            <span class="text-muted text-secondary" style="font-size: 0.85rem;">Standard Pass</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Legacy Attempts Group -->
+    {% if legacy_attempts %}
+        <div class="card-glass p-4 mb-5">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
+                <div>
+                    <h3 class="h4 text-white mb-1"><i class="fa-solid fa-clock-rotate-left text-muted me-2"></i>General / Legacy Exams</h3>
+                    <p class="text-secondary mb-0">Attempts registered before multiple subject-based examinations were configured.</p>
+                </div>
+                <span class="badge bg-secondary px-3 py-2 font-weight-bold fs-7">{{ legacy_attempts|length }} Attempts</span>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-custom text-light align-middle mb-0">
+                    <thead>
                         <tr>
-                            <td>
-                                <div class="font-weight-bold text-white fs-6">{{ attempt.user.name }}</div>
-                                <small class="text-secondary">{{ attempt.user.email }}</small>
-                            </td>
-                            <td>
-                                <span class="text-white">{{ attempt.start_time.strftime('%Y-%m-%d %H:%M') }}</span>
-                            </td>
-                            <td class="text-center">
-                                <span class="font-weight-bold text-white fs-6">{{ attempt.score }}</span>
-                                <span class="text-secondary">/ {{ attempt.exam_questions|length }}</span>
-                            </td>
-                            <td class="text-center font-weight-bold text-white">{{ attempt.percentage_score }}%</td>
-                            <td class="text-center">
-                                {% if attempt.violation_count > 0 %}
-                                    <span class="badge bg-danger-subtle text-danger px-3 py-2" style="border: 1px solid rgba(239, 68, 68, 0.3);">
-                                        <i class="fa-solid fa-triangle-exclamation me-1"></i> {{ attempt.violation_count }}
-                                    </span>
-                                {% else %}
-                                    <span class="text-success"><i class="fa-solid fa-circle-check"></i> Clean</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center">
-                                {% if attempt.passed %}
-                                    {% if attempt.manually_passed %}
-                                        <span class="badge bg-info-subtle text-info px-3 py-2 border border-info-subtle">
-                                            <i class="fa-solid fa-user-shield me-1"></i> Passed (Override)
+                            <th style="width: 25%;">Candidate</th>
+                            <th style="width: 20%;">Date attempted</th>
+                            <th style="width: 10%;" class="text-center">Score</th>
+                            <th style="width: 10%;" class="text-center">Percentage</th>
+                            <th style="width: 10%;" class="text-center">Violations</th>
+                            <th style="width: 12%;" class="text-center">Status</th>
+                            <th style="width: 13%;" class="text-end">Manual Override</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for attempt in legacy_attempts %}
+                            <tr>
+                                <td>
+                                    <div class="font-weight-bold text-white fs-6">{{ attempt.user.name }}</div>
+                                    <small class="text-secondary">{{ attempt.user.email }}</small>
+                                </td>
+                                <td>
+                                    <span class="text-white">{{ attempt.start_time.strftime('%Y-%m-%d %H:%M') }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="font-weight-bold text-white fs-6">{{ attempt.score }}</span>
+                                    <span class="text-secondary">/ {{ attempt.exam_questions|length }}</span>
+                                </td>
+                                <td class="text-center font-weight-bold text-white">{{ attempt.percentage_score }}%</td>
+                                <td class="text-center">
+                                    {% if attempt.violation_count > 0 %}
+                                        <span class="badge bg-danger-subtle text-danger px-3 py-2" style="border: 1px solid rgba(239, 68, 68, 0.3);">
+                                            <i class="fa-solid fa-triangle-exclamation me-1"></i> {{ attempt.violation_count }}
                                         </span>
                                     {% else %}
-                                        <span class="badge bg-success-subtle text-success px-3 py-2 border border-success-subtle">
-                                            <i class="fa-solid fa-circle-check me-1"></i> Passed
+                                        <span class="text-success"><i class="fa-solid fa-circle-check"></i> Clean</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if attempt.passed %}
+                                        {% if attempt.manually_passed %}
+                                            <span class="badge bg-info-subtle text-info px-3 py-2 border border-info-subtle">
+                                                <i class="fa-solid fa-user-shield me-1"></i> Passed (Override)
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-success-subtle text-success px-3 py-2 border border-success-subtle">
+                                                <i class="fa-solid fa-circle-check me-1"></i> Passed
+                                            </span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-danger-subtle text-danger px-3 py-2 border border-danger-subtle">
+                                            <i class="fa-solid fa-circle-xmark me-1"></i> Failed
                                         </span>
                                     {% endif %}
-                                {% else %}
-                                    <span class="badge bg-danger-subtle text-danger px-3 py-2 border border-danger-subtle">
-                                        <i class="fa-solid fa-circle-xmark me-1"></i> Failed
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <td class="text-end">
-                                {% if not attempt.passed or attempt.manually_passed %}
-                                    <!-- Borderline highlight class if failing score is near 40% (e.g. 30%-39.9%) -->
-                                    {% set is_borderline = attempt.percentage_score >= 30.0 and attempt.percentage_score < 40.0 %}
-                                    
-                                    <form action="{{ url_for('admin.toggle_pass', attempt_id=attempt.id) }}" method="POST">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        
-                                        {% if attempt.manually_passed %}
-                                            <button type="submit" class="btn btn-sm btn-outline-custom border-warning text-warning">
-                                                <i class="fa-solid fa-rotate-left me-1"></i> Revoke Pass
-                                            </button>
-                                        {% else %}
-                                            <button type="submit" class="btn btn-sm {% if is_borderline %}btn-warning text-dark font-weight-bold{% else %}btn-outline-custom{% endif %}">
-                                                <i class="fa-solid fa-user-check me-1"></i> Manually Pass
-                                            </button>
-                                        {% endif %}
-                                    </form>
-                                {% else %}
-                                    <span class="text-muted" style="font-size: 0.85rem;">Standard Pass</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                                </td>
+                                <td class="text-end">
+                                    {% if not attempt.passed or attempt.manually_passed %}
+                                        {% set is_borderline = attempt.percentage_score >= 30.0 and attempt.percentage_score < 40.0 %}
+                                        <form action="{{ url_for('admin.toggle_pass', attempt_id=attempt.id) }}" method="POST">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            {% if attempt.manually_passed %}
+                                                <button type="submit" class="btn btn-sm btn-outline-custom border-warning text-warning">
+                                                    <i class="fa-solid fa-rotate-left me-1"></i> Revoke
+                                                </button>
+                                            {% else %}
+                                                <button type="submit" class="btn btn-sm {% if is_borderline %}btn-warning text-dark font-weight-bold{% else %}btn-outline-custom{% endif %}">
+                                                    <i class="fa-solid fa-user-check me-1"></i> Pass
+                                                </button>
+                                            {% endif %}
+                                        </form>
+                                    {% else %}
+                                        <span class="text-muted text-secondary" style="font-size: 0.85rem;">Standard Pass</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     {% endif %}
-</div>
+{% endif %}
 {% endblock %}

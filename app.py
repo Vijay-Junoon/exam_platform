@@ -207,6 +207,46 @@ def create_app():
                 db.session.add(q)
             db.session.commit()
             print("Successfully seeded 10 sample questions into the database.")
+
+        # 5. Seed sample exams if empty
+        from models import Exam
+        if Exam.query.count() == 0:
+            sample_exams = [
+                {
+                    "title": "Operating Systems Midterm",
+                    "subject": "Operating Systems",
+                    "total_questions": 5,
+                    "very_complex_percentage": 20,
+                    "complex_percentage": 20,
+                    "medium_percentage": 40,
+                    "easy_percentage": 20,
+                    "exam_duration": 15
+                },
+                {
+                    "title": "Introduction to Computer Science",
+                    "subject": "Computer Science",
+                    "total_questions": 2,
+                    "very_complex_percentage": 0,
+                    "complex_percentage": 0,
+                    "medium_percentage": 0,
+                    "easy_percentage": 100,
+                    "exam_duration": 10
+                }
+            ]
+            for item in sample_exams:
+                ex = Exam(
+                    title=item["title"],
+                    subject=item["subject"],
+                    total_questions=item["total_questions"],
+                    very_complex_percentage=item["very_complex_percentage"],
+                    complex_percentage=item["complex_percentage"],
+                    medium_percentage=item["medium_percentage"],
+                    easy_percentage=item["easy_percentage"],
+                    exam_duration=item["exam_duration"]
+                )
+                db.session.add(ex)
+            db.session.commit()
+            print("Successfully seeded sample exams into the database.")
         
         print("Database seeding completed.")
 

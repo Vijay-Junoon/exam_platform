@@ -137,3 +137,52 @@ class AIQuestionGenerationForm(FlaskForm):
             return False
 
         return True
+
+
+class ExamForm(FlaskForm):
+    """Form to create or edit examinations (Admin only)."""
+    title = StringField('Exam Title', validators=[
+        DataRequired(),
+        Length(min=3, max=150, message="Title must be between 3 and 150 characters.")
+    ])
+    subject = StringField('Subject/Category', validators=[
+        DataRequired(),
+        Length(min=1, max=100, message="Subject must be between 1 and 100 characters.")
+    ])
+    total_questions = IntegerField('Total Exam Questions', validators=[
+        DataRequired(),
+        NumberRange(min=1, max=200, message="Exam must contain between 1 and 200 questions.")
+    ])
+    very_complex_percentage = IntegerField('Very Complex %', validators=[
+        NumberRange(min=0, max=100)
+    ])
+    complex_percentage = IntegerField('Complex %', validators=[
+        NumberRange(min=0, max=100)
+    ])
+    medium_percentage = IntegerField('Medium %', validators=[
+        NumberRange(min=0, max=100)
+    ])
+    easy_percentage = IntegerField('Easy %', validators=[
+        NumberRange(min=0, max=100)
+    ])
+    exam_duration = IntegerField('Exam Duration (minutes)', validators=[
+        DataRequired(),
+        NumberRange(min=1, max=300, message="Exam must last between 1 and 300 minutes.")
+    ])
+    submit = SubmitField('Save Exam')
+
+    def validate(self, extra_validators=None):
+        """Custom validator to check if difficulty percentages sum to 100%."""
+        initial_validation = super(ExamForm, self).validate(extra_validators=extra_validators)
+        if not initial_validation:
+            return False
+
+        vc = self.very_complex_percentage.data or 0
+        c = self.complex_percentage.data or 0
+        m = self.medium_percentage.data or 0
+        e = self.easy_percentage.data or 0
+
+        if (vc + c + m + e) != 100:
+            self.very_complex_percentage.errors.append('Percentages must sum to exactly 100%.')
+            return False
+        return True

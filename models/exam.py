@@ -24,12 +24,44 @@ class ExamConfiguration(db.Model):
         return f"<ExamConfiguration id={self.id} total={self.total_questions}>"
 
 
+class Exam(db.Model):
+    """Represents a specific examination created by an administrator."""
+    __tablename__ = 'exams'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(150), nullable=False)
+    subject = db.Column(db.String(100), nullable=False)
+
+    total_questions = db.Column(db.Integer, nullable=False, default=10)
+    very_complex_percentage = db.Column(db.Integer, nullable=False, default=25)
+    complex_percentage = db.Column(db.Integer, nullable=False, default=25)
+    medium_percentage = db.Column(db.Integer, nullable=False, default=30)
+    easy_percentage = db.Column(db.Integer, nullable=False, default=20)
+    exam_duration = db.Column(db.Integer, nullable=False, default=15) # duration in minutes
+
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    attempts = db.relationship('ExamAttempt', back_populates='exam', cascade='all, delete-orphan')
+
+    def validate_percentages(self):
+        """Helper to ensure percentages sum to 100."""
+        return (self.very_complex_percentage + 
+                self.complex_percentage + 
+                self.medium_percentage + 
+                self.easy_percentage) == 100
+
+    def __repr__(self):
+        return f"<Exam id={self.id} title={self.title} subject={self.subject}>"
+
+
 class ExamAttempt(db.Model):
     """Tracks every exam attempt made by a teacher."""
     __tablename__ = 'exam_attempts'
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    exam_id = db.Column(db.Integer, db.ForeignKey('exams.id', ondelete='CASCADE'), nullable=True)
     start_time = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     end_time = db.Column(db.DateTime(timezone=True), nullable=True)
     score = db.Column(db.Integer, default=0, nullable=False)
@@ -39,6 +71,7 @@ class ExamAttempt(db.Model):
 
     # Relationships
     user = db.relationship('User', back_populates='attempts')
+    exam = db.relationship('Exam', back_populates='attempts')
     exam_questions = db.relationship('ExamQuestion', back_populates='attempt', cascade='all, delete-orphan')
     answers = db.relationship('Answer', back_populates='attempt', cascade='all, delete-orphan')
 

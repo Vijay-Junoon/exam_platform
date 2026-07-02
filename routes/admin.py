@@ -4,8 +4,8 @@ from flask_login import login_required, current_user
 from services.question_service import QuestionService
 from services.exam_service import ExamService
 from services.groq_service import GroqService
-from forms import QuestionForm, ExamConfigForm, AIQuestionGenerationForm
-from models import User, Question, ExamAttempt
+from forms import QuestionForm, ExamConfigForm, AIQuestionGenerationForm, ExamForm
+from models import User, Question, ExamAttempt, Exam, db
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -237,9 +237,18 @@ def generate_questions():
 @login_required
 @admin_required
 def view_results():
-    """Lists teacher exam attempt details, tracking scores and browser violations."""
-    attempts = ExamService.get_all_attempts()
-    return render_template('admin/results.html', attempts=attempts)
+    """Lists teacher exam attempt details, tracking scores and browser violations, grouped by exam."""
+    exams = Exam.query.order_by(Exam.created_at.desc()).all()
+    grouped_attempts = []
+    for exam in exams:
+        attempts = ExamAttempt.query.filter_by(exam_id=exam.id).order_by(ExamAttempt.start_time.desc()).all()
+        grouped_attempts.append((exam, attempts))
+        
+    legacy_attempts = ExamAttempt.query.filter_by(exam_id=None).order_by(ExamAttempt.start_time.desc()).all()
+    
+    return render_template('admin/results.html', 
+                           grouped_attempts=grouped_attempts, 
+                           legacy_attempts=legacy_attempts)
 
 
 @admin_bp.route('/admin/results/toggle-pass/<int:attempt_id>', methods=['POST'])
@@ -253,3 +262,103 @@ def toggle_pass(attempt_id):
     else:
         flash(error or "Failed to update candidate status.", "danger")
     return redirect(url_for('admin.view_results'))
+
+
+@admin_bp.route('/admin/exams')
+@login_required
+@admin_required
+def list_exams():
+    """Lists all configured examinations."""
+    exams = Exam.query.order_by(Exam.created_at.desc()).all()
+    # Check question counts per subject for helper messages
+    subject_counts = {}
+    from sqlalchemy import func
+    counts = db.session.query(Question.subject, func.count(Question.id)).group_by(Question.subject).all()
+    for sub, count in counts:
+        subject_counts[sub] = count
+
+    return render_template('admin/exams.html', exams=exams, subject_counts=subject_counts)
+
+
+@admin_bp.route('/admin/exams/create', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def create_exam():
+    """Handles creation of a new examination."""
+    form = ExamForm()
+    if request.method == 'GET':
+        # pre-populate with default config
+        config = ExamService.get_or_create_config()
+        form.total_questions.data = config.total_questions
+        form.very_complex_percentage.data = config.very_complex_percentage
+        form.complex_percentage.data = config.complex_percentage
+        form.medium_percentage.data = config.medium_percentage
+        form.easy_percentage.data = config.easy_percentage
+        form.exam_duration.data = config.exam_duration
+
+    if form.validate_on_submit():
+        exam = Exam(
+            title=form.title.data,
+            subject=form.subject.data,
+            total_questions=form.total_questions.data,
+            very_complex_percentage=form.very_complex_percentage.data,
+            complex_percentage=form.complex_percentage.data,
+            medium_percentage=form.medium_percentage.data,
+            easy_percentage=form.easy_percentage.data,
+            exam_duration=form.exam_duration.data
+        )
+        db.session.add(exam)
+        try:
+            db.session.commit()
+            flash(f"Examination '{exam.title}' created successfully!", "success")
+            return redirect(url_for('admin.list_exams'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error creating exam: {str(e)}", "danger")
+
+    return render_template('admin/edit_exam.html', form=form, title="Create Exam")
+
+
+@admin_bp.route('/admin/exams/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_exam(id):
+    """Handles editing an existing examination configuration."""
+    exam = Exam.query.get_or_404(id)
+    form = ExamForm(obj=exam)
+
+    if form.validate_on_submit():
+        exam.title = form.title.data
+        exam.subject = form.subject.data
+        exam.total_questions = form.total_questions.data
+        exam.very_complex_percentage = form.very_complex_percentage.data
+        exam.complex_percentage = form.complex_percentage.data
+        exam.medium_percentage = form.medium_percentage.data
+        exam.easy_percentage = form.easy_percentage.data
+        exam.exam_duration = form.exam_duration.data
+
+        try:
+            db.session.commit()
+            flash(f"Examination '{exam.title}' updated successfully!", "success")
+            return redirect(url_for('admin.list_exams'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error updating exam: {str(e)}", "danger")
+
+    return render_template('admin/edit_exam.html', form=form, title="Edit Exam", exam=exam)
+
+
+@admin_bp.route('/admin/exams/delete/<int:id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_exam(id):
+    """Deletes an examination configuration."""
+    exam = Exam.query.get_or_404(id)
+    try:
+        db.session.delete(exam)
+        db.session.commit()
+        flash(f"Examination '{exam.title}' deleted successfully.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Failed to delete exam: {str(e)}", "danger")
+    return redirect(url_for('admin.list_exams'))

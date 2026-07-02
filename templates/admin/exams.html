@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Manage Exams - ExamSphere{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-5 gap-3">
+    <div>
+        <h1 class="h2 mb-1">Examination Configurations</h1>
+        <p class="text-secondary mb-0">Create, edit, or delete customized exams for teachers, targeted by specific subjects.</p>
+    </div>
+    <div>
+        <a href="{{ url_for('admin.create_exam') }}" class="btn btn-primary-custom">
+            <i class="fa-solid fa-plus me-1"></i> Create Exam Configuration
+        </a>
+    </div>
+</div>
+
+<div class="card-glass p-4">
+    {% if not exams %}
+        <div class="text-center py-5">
+            <i class="fa-solid fa-file-invoice text-muted fs-1 mb-3"></i>
+            <h4 class="text-secondary">No exams configured yet</h4>
+            <p class="text-muted">Create an examination configuration above to get started.</p>
+        </div>
+    {% else %}
+        <div class="table-responsive">
+            <table class="table table-custom text-light align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">Exam Title</th>
+                        <th style="width: 15%;">Subject</th>
+                        <th style="width: 15%;">Questions Pool Status</th>
+                        <th style="width: 15%;">Duration</th>
+                        <th style="width: 20%;">Difficulty Breakdown</th>
+                        <th style="width: 10%;" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exam in exams %}
+                        {% set available = subject_counts.get(exam.subject, 0) %}
+                        {% set is_valid_pool = available >= exam.total_questions %}
+                        <tr>
+                            <td>
+                                <div class="font-weight-bold text-white fs-6 mb-1">{{ exam.title }}</div>
+                                <small class="text-secondary">Created: {{ exam.created_at.strftime('%Y-%m-%d') }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-1.5 fs-7">
+                                    {{ exam.subject }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if is_valid_pool %}
+                                    <span class="text-success" style="font-size: 0.95rem;">
+                                        <i class="fa-solid fa-circle-check me-1"></i> Ready ({{ exam.total_questions }} / {{ available }} avail)
+                                    </span>
+                                {% else %}
+                                    <span class="text-danger" style="font-size: 0.95rem;" title="Not enough questions matching this subject in the database. Required: {{ exam.total_questions }}, Available: {{ available }}">
+                                        <i class="fa-solid fa-circle-exclamation me-1"></i> Shortage (Req: {{ exam.total_questions }} / Avail: {{ available }})
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="text-white font-weight-bold">{{ exam.exam_duration }} mins</span>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1.5 mt-1">
+                                    <span class="badge badge-difficulty badge-easy py-1">E: {{ exam.easy_percentage }}%</span>
+                                    <span class="badge badge-difficulty badge-medium py-1">M: {{ exam.medium_percentage }}%</span>
+                                    <span class="badge badge-difficulty badge-complex py-1">C: {{ exam.complex_percentage }}%</span>
+                                    <span class="badge badge-difficulty badge-very_complex py-1">V: {{ exam.very_complex_percentage }}%</span>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a href="{{ url_for('admin.edit_exam', id=exam.id) }}" class="btn btn-sm btn-outline-custom" title="Edit Exam">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </a>
+                                    
+                                    <!-- Secure Delete via POST -->
+                                    <form action="{{ url_for('admin.delete_exam', id=exam.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to permanently delete this exam? All candidate scores and history associated with this exam will be deleted!');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-custom border-danger text-danger" title="Delete Exam">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

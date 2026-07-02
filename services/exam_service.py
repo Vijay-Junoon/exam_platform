@@ -79,8 +79,13 @@ class ExamService:
         if attempt.completed:
             return False, 0
             
-        config = ExamService.get_or_create_config()
-        duration_delta = timedelta(minutes=config.exam_duration)
+        if attempt.exam:
+            duration = attempt.exam.exam_duration
+        else:
+            config = ExamService.get_or_create_config()
+            duration = config.exam_duration
+            
+        duration_delta = timedelta(minutes=duration)
         expiry_time = attempt.start_time + duration_delta
         now = datetime.now(timezone.utc)
 
@@ -94,30 +99,36 @@ class ExamService:
         return False, remaining_seconds
 
     @staticmethod
-    def create_exam_attempt(user_id):
+    def create_exam_attempt(user_id, exam_id):
         """
-        Starts a new exam attempt.
-        Calculates difficulty breakdown, selects random questions, and initializes attempt sequence.
+        Starts a new exam attempt for a specific Exam.
+        Calculates difficulty breakdown, selects random questions from the exam's subject, and initializes attempt sequence.
         """
         # Ensure no active attempt exists
         active = ExamService.get_active_attempt(user_id)
         if active:
             return active, None
 
-        config = ExamService.get_or_create_config()
-        total_req = config.total_questions
+        # Fetch the specific exam config
+        from models import Exam
+        exam = Exam.query.get(exam_id)
+        if not exam:
+            return None, "Exam not found."
 
-        # Verify we have at least total_req questions in the entire database
-        total_available = Question.query.count()
+        total_req = exam.total_questions
+        subject = exam.subject
+
+        # Verify we have at least total_req questions in the specified subject
+        total_available = Question.query.filter_by(subject=subject).count()
         if total_available < total_req:
-            return None, f"Insufficient questions in the question bank. Required: {total_req}, Available: {total_available}. Please contact the administrator."
+            return None, f"Insufficient questions in the question bank for subject '{subject}'. Required: {total_req}, Available: {total_available}. Please contact the administrator."
 
         # Calculate target counts per difficulty
         targets = {
-            'very_complex': int(round((config.very_complex_percentage / 100.0) * total_req)),
-            'complex': int(round((config.complex_percentage / 100.0) * total_req)),
-            'medium': int(round((config.medium_percentage / 100.0) * total_req)),
-            'easy': int(round((config.easy_percentage / 100.0) * total_req))
+            'very_complex': int(round((exam.very_complex_percentage / 100.0) * total_req)),
+            'complex': int(round((exam.complex_percentage / 100.0) * total_req)),
+            'medium': int(round((exam.medium_percentage / 100.0) * total_req)),
+            'easy': int(round((exam.easy_percentage / 100.0) * total_req))
         }
 
         # Adjust for rounding discrepancies to ensure total sum is exactly total_req
@@ -131,12 +142,12 @@ class ExamService:
         selected_questions = []
         fallback_pool = []
 
-        # Pull random questions for each difficulty
+        # Pull random questions for each difficulty matching the subject
         for diff_level, count in targets.items():
             if count <= 0:
                 continue
-            # Query random questions for this level
-            q_level = Question.query.filter_by(difficulty_level=diff_level).order_by(func.random()).all()
+            # Query random questions for this level and subject
+            q_level = Question.query.filter_by(subject=subject, difficulty_level=diff_level).order_by(func.random()).all()
             
             taken = q_level[:count]
             selected_questions.extend(taken)
@@ -144,22 +155,22 @@ class ExamService:
             # Store leftovers for fallback
             fallback_pool.extend(q_level[count:])
 
-        # If we couldn't fulfill the difficulty quotas due to shortage in specific levels
+        # If we couldn't fulfill the difficulty quotas due to shortage in specific levels of this subject
         if len(selected_questions) < total_req:
             needed = total_req - len(selected_questions)
-            # Add general leftover questions from fallback_pool or other difficulties
+            # Add general leftover questions from fallback_pool (which already only contains questions of this subject)
             random.shuffle(fallback_pool)
             selected_questions.extend(fallback_pool[:needed])
 
-        # If still short (edge case of database count vs config total), fetch any remaining question not selected
+        # If still short (edge case of database count vs config total), fetch any remaining question of this subject not selected
         if len(selected_questions) < total_req:
             selected_ids = [q.id for q in selected_questions]
-            rems = Question.query.filter(~Question.id.in_(selected_ids)).order_by(func.random()).all()
+            rems = Question.query.filter(Question.subject == subject, ~Question.id.in_(selected_ids)).order_by(func.random()).all()
             selected_questions.extend(rems[:(total_req - len(selected_questions))])
 
         # Final check
         if len(selected_questions) < total_req:
-            return None, "Unable to generate exam. There are not enough questions in the database."
+            return None, f"Unable to generate exam. There are not enough questions in subject '{subject}'."
 
         # Shuffle selected questions to ensure random order
         random.shuffle(selected_questions)
@@ -167,6 +178,7 @@ class ExamService:
         # Create ExamAttempt record
         attempt = ExamAttempt(
             user_id=user_id,
+            exam_id=exam.id,
             start_time=datetime.now(timezone.utc),
             completed=False,
             score=0,
@@ -280,8 +292,13 @@ class ExamService:
         if attempt.completed:
             return False, 0
 
-        config = ExamService.get_or_create_config()
-        duration_delta = timedelta(minutes=config.exam_duration)
+        if attempt.exam:
+            duration = attempt.exam.exam_duration
+        else:
+            config = ExamService.get_or_create_config()
+            duration = config.exam_duration
+
+        duration_delta = timedelta(minutes=duration)
         expiry_time = attempt.start_time + duration_delta
         now = datetime.now(timezone.utc)
 
