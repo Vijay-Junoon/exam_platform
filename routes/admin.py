@@ -40,13 +40,52 @@ def dashboard():
     # Get active config
     config = ExamService.get_or_create_config()
     
+    # Calculate statistics for each exam configuration
+    exams = Exam.query.order_by(Exam.created_at.desc()).all()
+    exam_stats = []
+    for exam in exams:
+        attempts = ExamAttempt.query.filter_by(exam_id=exam.id).all()
+        completed_attempts_list = [a for a in attempts if a.completed]
+        total_completed = len(completed_attempts_list)
+        passed = sum(1 for a in completed_attempts_list if a.passed)
+        failed = total_completed - passed
+        pass_rate = round((passed / total_completed) * 100, 1) if total_completed > 0 else 0.0
+        
+        exam_stats.append({
+            'id': exam.id,
+            'title': exam.title,
+            'subject': exam.subject,
+            'total_attempts': total_completed,
+            'passed': passed,
+            'failed': failed,
+            'pass_rate': pass_rate
+        })
+        
+    # Also include legacy/general exams if there are attempts with exam_id=None
+    legacy_attempts = ExamAttempt.query.filter_by(exam_id=None, completed=True).all()
+    if legacy_attempts:
+        total_completed = len(legacy_attempts)
+        passed = sum(1 for a in legacy_attempts if a.passed)
+        failed = total_completed - passed
+        pass_rate = round((passed / total_completed) * 100, 1) if total_completed > 0 else 0.0
+        exam_stats.append({
+            'id': None,
+            'title': 'General / Legacy Exams',
+            'subject': 'N/A',
+            'total_attempts': total_completed,
+            'passed': passed,
+            'failed': failed,
+            'pass_rate': pass_rate
+        })
+    
     return render_template('admin/dashboard.html',
                            total_questions=total_questions,
                            total_teachers=total_teachers,
                            total_attempts=total_attempts,
                            completed_attempts=completed_attempts,
                            difficulty_counts=difficulty_counts,
-                           exam_config=config)
+                           exam_config=config,
+                           exam_stats=exam_stats)
 
 
 @admin_bp.route('/admin/questions', methods=['GET'])

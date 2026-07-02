@@ -25,4 +25,4 @@ class Config:
     GROQ_API_KEY = os.getenv('GROQ_API_KEY')
     
     # Application Security Settings
-    MAX_VIOLATIONS_ALLOWED = 3
+    MAX_VIOLATIONS_ALLOWED = 1
