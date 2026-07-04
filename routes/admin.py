@@ -24,18 +24,11 @@ def admin_required(f):
 @admin_required
 def dashboard():
     """Renders the main admin landing page showing quick metrics."""
+    db.session.rollback()
     total_questions = Question.query.count()
     total_teachers = User.query.filter_by(role='teacher').count()
     total_attempts = ExamAttempt.query.count()
     completed_attempts = ExamAttempt.query.filter_by(completed=True).count()
-    
-    # Calculate counts per difficulty
-    difficulty_counts = {
-        'easy': Question.query.filter_by(difficulty_level='easy').count(),
-        'medium': Question.query.filter_by(difficulty_level='medium').count(),
-        'complex': Question.query.filter_by(difficulty_level='complex').count(),
-        'very_complex': Question.query.filter_by(difficulty_level='very_complex').count()
-    }
     
     # Get active config
     config = ExamService.get_or_create_config()
@@ -83,7 +76,6 @@ def dashboard():
                            total_teachers=total_teachers,
                            total_attempts=total_attempts,
                            completed_attempts=completed_attempts,
-                           difficulty_counts=difficulty_counts,
                            exam_config=config,
                            exam_stats=exam_stats)
 
@@ -92,21 +84,18 @@ def dashboard():
 @login_required
 @admin_required
 def list_questions():
-    """Renders question list with difficulty level filtering."""
-    difficulty = request.args.get('difficulty')
+    """Renders question list with subject filtering."""
     subject = request.args.get('subject')
     
     # If filter is 'all' or empty, treat as None
-    filter_diff = difficulty if difficulty and difficulty != 'all' else None
     filter_sub = subject if subject and subject != 'all' else None
 
-    questions = QuestionService.get_all_questions(difficulty=filter_diff, subject=filter_sub)
+    questions = QuestionService.get_all_questions(subject=filter_sub)
     subjects = QuestionService.get_all_subjects()
     
     return render_template('admin/questions.html', 
                            questions=questions, 
                            subjects=subjects,
-                           current_difficulty=difficulty or 'all',
                            current_subject=subject or 'all')
 
 
@@ -124,7 +113,6 @@ def add_question():
             option_c=form.option_c.data,
             option_d=form.option_d.data,
             correct_answer=form.correct_answer.data,
-            difficulty_level=form.difficulty_level.data,
             subject=form.subject.data,
             creator_id=current_user.id
         )
@@ -158,7 +146,6 @@ def edit_question(id):
             option_c=form.option_c.data,
             option_d=form.option_d.data,
             correct_answer=form.correct_answer.data,
-            difficulty_level=form.difficulty_level.data,
             subject=form.subject.data
         )
         if error:
@@ -202,19 +189,17 @@ def delete_all_questions():
 @login_required
 @admin_required
 def configure_exam():
-    """Handles updating global exam settings (percentages and duration)."""
+    """Handles updating global exam settings (total questions and duration)."""
     config = ExamService.get_or_create_config()
     form = ExamConfigForm(obj=config)
     
     if form.validate_on_submit():
         updated_cfg, error = ExamService.update_config(
             total_questions=form.total_questions.data,
-            very_complex_pct=form.very_complex_percentage.data,
-            complex_pct=form.complex_percentage.data,
-            medium_pct=form.medium_percentage.data,
-            easy_pct=form.easy_percentage.data,
             duration=form.exam_duration.data,
-            use_difficulty_dist=form.use_difficulty_distribution.data
+            pattern=form.pattern.data,
+            passing_marks=form.passing_marks.data,
+            override_threshold=form.override_threshold.data
         )
         if error:
             flash(error, 'danger')
@@ -285,7 +270,6 @@ def generate_questions():
             subject=form.subject.data,
             topic_description=combined_description,
             num_questions=form.num_questions.data,
-            difficulty_level=form.difficulty_level.data,
             api_key=api_key
         )
         
@@ -339,7 +323,6 @@ def extract_questions():
             batch_qs, error = GroqService.extract_questions_from_text(
                 pdf_text=batch_text,
                 subject=form.subject.data,
-                difficulty_level=form.difficulty_level.data,
                 api_key=api_key
             )
             if error:
@@ -371,6 +354,7 @@ def extract_questions():
 @admin_required
 def view_results():
     """Lists teacher exam attempt details, tracking scores and browser violations, grouped by exam."""
+    db.session.rollback()
     exams = Exam.query.order_by(Exam.created_at.desc()).all()
     grouped_attempts = []
     for exam in exams:
@@ -430,24 +414,20 @@ def create_exam():
         # pre-populate with default config
         config = ExamService.get_or_create_config()
         form.total_questions.data = config.total_questions
-        form.very_complex_percentage.data = config.very_complex_percentage
-        form.complex_percentage.data = config.complex_percentage
-        form.medium_percentage.data = config.medium_percentage
-        form.easy_percentage.data = config.easy_percentage
         form.exam_duration.data = config.exam_duration
-        form.use_difficulty_distribution.data = config.use_difficulty_distribution
+        form.pattern.data = config.pattern
+        form.passing_marks.data = config.passing_marks
+        form.override_threshold.data = config.override_threshold
 
     if form.validate_on_submit():
         exam = Exam(
             title=form.title.data,
             subject=form.subject.data,
             total_questions=form.total_questions.data,
-            very_complex_percentage=form.very_complex_percentage.data or 0,
-            complex_percentage=form.complex_percentage.data or 0,
-            medium_percentage=form.medium_percentage.data or 0,
-            easy_percentage=form.easy_percentage.data or 0,
             exam_duration=form.exam_duration.data,
-            use_difficulty_distribution=form.use_difficulty_distribution.data
+            pattern=form.pattern.data,
+            passing_marks=form.passing_marks.data,
+            override_threshold=form.override_threshold.data
         )
         db.session.add(exam)
         try:
@@ -481,12 +461,10 @@ def edit_exam(id):
         exam.title = form.title.data
         exam.subject = form.subject.data
         exam.total_questions = form.total_questions.data
-        exam.very_complex_percentage = form.very_complex_percentage.data or 0
-        exam.complex_percentage = form.complex_percentage.data or 0
-        exam.medium_percentage = form.medium_percentage.data or 0
-        exam.easy_percentage = form.easy_percentage.data or 0
         exam.exam_duration = form.exam_duration.data
-        exam.use_difficulty_distribution = form.use_difficulty_distribution.data
+        exam.pattern = form.pattern.data
+        exam.passing_marks = form.passing_marks.data
+        exam.override_threshold = form.override_threshold.data
 
         try:
             db.session.commit()

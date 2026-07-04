@@ -15,7 +15,7 @@ def create_app():
 
     # Initialize extensions
     db.init_app(app)
-    migrate = Migrate(app, db)
+    migrate = Migrate(app, db, render_as_batch=True)
     CSRFProtect(app) # Enable global CSRF protection
     
     login_manager = LoginManager()
@@ -95,7 +95,6 @@ def create_app():
                     "option_c": "Computer Personal Unit",
                     "option_d": "Central Processor Utility",
                     "correct_answer": "B",
-                    "difficulty_level": "easy",
                     "subject": "Computer Science"
                 },
                 {
@@ -105,7 +104,6 @@ def create_app():
                     "option_c": "RAM",
                     "option_d": "SSD",
                     "correct_answer": "C",
-                    "difficulty_level": "easy",
                     "subject": "Computer Science"
                 },
                 {
@@ -115,7 +113,6 @@ def create_app():
                     "option_c": "To manage computer hardware resources",
                     "option_d": "To run anti-virus scans",
                     "correct_answer": "C",
-                    "difficulty_level": "easy",
                     "subject": "Operating Systems"
                 },
                 # Medium
@@ -126,7 +123,6 @@ def create_app():
                     "option_c": "Shortest Remaining Time First (SRTF)",
                     "option_d": "Priority Preemptive Scheduling",
                     "correct_answer": "B",
-                    "difficulty_level": "medium",
                     "subject": "Operating Systems"
                 },
                 {
@@ -136,7 +132,6 @@ def create_app():
                     "option_c": "Creating temporary file shares",
                     "option_d": "Running code inside virtual machines",
                     "correct_answer": "B",
-                    "difficulty_level": "medium",
                     "subject": "Operating Systems"
                 },
                 {
@@ -146,7 +141,6 @@ def create_app():
                     "option_c": "Preemption",
                     "option_d": "Circular Wait",
                     "correct_answer": "C",
-                    "difficulty_level": "medium",
                     "subject": "Operating Systems"
                 },
                 # Complex
@@ -157,7 +151,6 @@ def create_app():
                     "option_c": "Clearing the cache memory on reboot",
                     "option_d": "Deleting dead or zombie child processes",
                     "correct_answer": "B",
-                    "difficulty_level": "complex",
                     "subject": "Operating Systems"
                 },
                 {
@@ -167,7 +160,6 @@ def create_app():
                     "option_c": "Deadlock detection",
                     "option_d": "Process synchronization",
                     "correct_answer": "B",
-                    "difficulty_level": "complex",
                     "subject": "Operating Systems"
                 },
                 # Very Complex
@@ -178,7 +170,6 @@ def create_app():
                     "option_c": "16 KB",
                     "option_d": "64 KB",
                     "correct_answer": "B",
-                    "difficulty_level": "very_complex",
                     "subject": "Operating Systems"
                 },
                 {
@@ -188,7 +179,6 @@ def create_app():
                     "option_c": "Soft links are only for directories; hard links are only for files",
                     "option_d": "Hard links are slower to resolve than soft links",
                     "correct_answer": "B",
-                    "difficulty_level": "very_complex",
                     "subject": "Operating Systems"
                 }
             ]
@@ -200,7 +190,6 @@ def create_app():
                     option_c=item["option_c"],
                     option_d=item["option_d"],
                     correct_answer=item["correct_answer"],
-                    difficulty_level=item["difficulty_level"],
                     subject=item["subject"],
                     created_by=admin_id
                 )
@@ -216,21 +205,15 @@ def create_app():
                     "title": "Operating Systems Midterm",
                     "subject": "Operating Systems",
                     "total_questions": 5,
-                    "very_complex_percentage": 20,
-                    "complex_percentage": 20,
-                    "medium_percentage": 40,
-                    "easy_percentage": 20,
-                    "exam_duration": 15
+                    "exam_duration": 15,
+                    "pattern": "GATE"
                 },
                 {
                     "title": "Introduction to Computer Science",
                     "subject": "Computer Science",
                     "total_questions": 2,
-                    "very_complex_percentage": 0,
-                    "complex_percentage": 0,
-                    "medium_percentage": 0,
-                    "easy_percentage": 100,
-                    "exam_duration": 10
+                    "exam_duration": 10,
+                    "pattern": "HR"
                 }
             ]
             for item in sample_exams:
@@ -238,11 +221,8 @@ def create_app():
                     title=item["title"],
                     subject=item["subject"],
                     total_questions=item["total_questions"],
-                    very_complex_percentage=item["very_complex_percentage"],
-                    complex_percentage=item["complex_percentage"],
-                    medium_percentage=item["medium_percentage"],
-                    easy_percentage=item["easy_percentage"],
-                    exam_duration=item["exam_duration"]
+                    exam_duration=item["exam_duration"],
+                    pattern=item["pattern"]
                 )
                 db.session.add(ex)
             db.session.commit()

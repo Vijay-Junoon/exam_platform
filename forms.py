@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed, FileRequired
-from wtforms import StringField, PasswordField, SubmitField, SelectField, TextAreaField, IntegerField, BooleanField
+from wtforms import StringField, PasswordField, SubmitField, SelectField, TextAreaField, IntegerField, BooleanField, FloatField
 from wtforms.validators import DataRequired, Email, Length, EqualTo, NumberRange, ValidationError, Optional
 
 class RegistrationForm(FlaskForm):
@@ -49,12 +49,6 @@ class QuestionForm(FlaskForm):
         ('C', 'Option C'),
         ('D', 'Option D')
     ], validators=[DataRequired()])
-    difficulty_level = SelectField('Difficulty Level', choices=[
-        ('easy', 'Easy'),
-        ('medium', 'Medium'),
-        ('complex', 'Complex'),
-        ('very_complex', 'Very Complex')
-    ], validators=[DataRequired()])
     subject = StringField('Subject/Category', validators=[DataRequired(), Length(max=100)])
     submit = SubmitField('Save Question')
 
@@ -65,47 +59,33 @@ class ExamConfigForm(FlaskForm):
         DataRequired(),
         NumberRange(min=1, max=200, message="Exam must contain between 1 and 200 questions.")
     ])
-    use_difficulty_distribution = BooleanField('Use Difficulty-Wise Allocation', default=True)
-    very_complex_percentage = IntegerField('Very Complex %', validators=[
-        Optional(),
-        NumberRange(min=0, max=100)
-    ])
-    complex_percentage = IntegerField('Complex %', validators=[
-        Optional(),
-        NumberRange(min=0, max=100)
-    ])
-    medium_percentage = IntegerField('Medium %', validators=[
-        Optional(),
-        NumberRange(min=0, max=100)
-    ])
-    easy_percentage = IntegerField('Easy %', validators=[
-        Optional(),
-        NumberRange(min=0, max=100)
-    ])
     exam_duration = IntegerField('Exam Duration (minutes)', validators=[
         DataRequired(),
         NumberRange(min=1, max=300, message="Exam must last between 1 and 300 minutes.")
     ])
+    pattern = SelectField('Exam Pattern', choices=[
+        ('HR', 'HR Pattern (No negative marking)'),
+        ('GATE', 'GATE Pattern (-1/3 negative marking)')
+    ], validators=[DataRequired()])
+    passing_marks = FloatField('Passing Marks', validators=[
+        DataRequired(message="Please provide passing marks."),
+        NumberRange(min=0.1, message="Passing marks must be greater than 0.")
+    ])
+    override_threshold = FloatField('Override Threshold', validators=[
+        DataRequired(message="Please provide override threshold."),
+        NumberRange(min=0.0, message="Threshold cannot be negative.")
+    ])
     submit = SubmitField('Update Configuration')
 
-    def validate(self, extra_validators=None):
-        """Custom validator to check if difficulty percentages sum to 100%."""
-        initial_validation = super(ExamConfigForm, self).validate(extra_validators=extra_validators)
-        if not initial_validation:
-            return False
+    def validate_passing_marks(self, field):
+        if self.total_questions.data is not None and field.data is not None:
+            if field.data > self.total_questions.data:
+                raise ValidationError("Passing marks cannot exceed total questions.")
 
-        if not self.use_difficulty_distribution.data:
-            return True
-
-        vc = self.very_complex_percentage.data or 0
-        c = self.complex_percentage.data or 0
-        m = self.medium_percentage.data or 0
-        e = self.easy_percentage.data or 0
-
-        if (vc + c + m + e) != 100:
-            self.very_complex_percentage.errors.append('Percentages must sum to exactly 100%.')
-            return False
-        return True
+    def validate_override_threshold(self, field):
+        if self.passing_marks.data is not None and field.data is not None:
+            if field.data > self.passing_marks.data:
+                raise ValidationError("Override threshold cannot exceed passing marks.")
 
 
 class AIQuestionGenerationForm(FlaskForm):
@@ -117,14 +97,8 @@ class AIQuestionGenerationForm(FlaskForm):
     ])
     num_questions = IntegerField('Number of Questions to Generate', validators=[
         DataRequired(),
-        NumberRange(min=1, max=20, message="Generate between 1 and 20 questions per call.")
+        NumberRange(min=1, max=40, message="Generate between 1 and 40 questions per call.")
     ])
-    difficulty_level = SelectField('Difficulty Level', choices=[
-        ('easy', 'Easy'),
-        ('medium', 'Medium'),
-        ('complex', 'Complex'),
-        ('very_complex', 'Very Complex')
-    ], validators=[DataRequired()])
     submit = SubmitField('Generate Questions')
 
     def validate(self, extra_validators=None):
@@ -157,12 +131,6 @@ class ExtractQuestionsPDFForm(FlaskForm):
         DataRequired(),
         Length(max=100)
     ], default='General')
-    difficulty_level = SelectField('Default Difficulty Level', choices=[
-        ('easy', 'Easy'),
-        ('medium', 'Medium'),
-        ('complex', 'Complex'),
-        ('very_complex', 'Very Complex')
-    ], validators=[DataRequired()], default='medium')
     submit = SubmitField('Extract & Import Questions')
 
 
@@ -179,44 +147,30 @@ class ExamForm(FlaskForm):
         DataRequired(),
         NumberRange(min=1, max=200, message="Exam must contain between 1 and 200 questions.")
     ])
-    use_difficulty_distribution = BooleanField('Use Difficulty-Wise Allocation', default=True)
-    very_complex_percentage = IntegerField('Very Complex %', validators=[
-        Optional(),
-        NumberRange(min=0, max=100)
-    ])
-    complex_percentage = IntegerField('Complex %', validators=[
-        Optional(),
-        NumberRange(min=0, max=100)
-    ])
-    medium_percentage = IntegerField('Medium %', validators=[
-        Optional(),
-        NumberRange(min=0, max=100)
-    ])
-    easy_percentage = IntegerField('Easy %', validators=[
-        Optional(),
-        NumberRange(min=0, max=100)
-    ])
     exam_duration = IntegerField('Exam Duration (minutes)', validators=[
         DataRequired(),
         NumberRange(min=1, max=300, message="Exam must last between 1 and 300 minutes.")
     ])
+    pattern = SelectField('Exam Pattern', choices=[
+        ('HR', 'HR Pattern (No negative marking)'),
+        ('GATE', 'GATE Pattern (-1/3 negative marking)')
+    ], validators=[DataRequired()])
+    passing_marks = FloatField('Passing Marks', validators=[
+        DataRequired(message="Please provide passing marks."),
+        NumberRange(min=0.1, message="Passing marks must be greater than 0.")
+    ])
+    override_threshold = FloatField('Override Threshold', validators=[
+        DataRequired(message="Please provide override threshold."),
+        NumberRange(min=0.0, message="Threshold cannot be negative.")
+    ])
     submit = SubmitField('Save Exam')
 
-    def validate(self, extra_validators=None):
-        """Custom validator to check if difficulty percentages sum to 100%."""
-        initial_validation = super(ExamForm, self).validate(extra_validators=extra_validators)
-        if not initial_validation:
-            return False
+    def validate_passing_marks(self, field):
+        if self.total_questions.data is not None and field.data is not None:
+            if field.data > self.total_questions.data:
+                raise ValidationError("Passing marks cannot exceed total questions.")
 
-        if not self.use_difficulty_distribution.data:
-            return True
-
-        vc = self.very_complex_percentage.data or 0
-        c = self.complex_percentage.data or 0
-        m = self.medium_percentage.data or 0
-        e = self.easy_percentage.data or 0
-
-        if (vc + c + m + e) != 100:
-            self.very_complex_percentage.errors.append('Percentages must sum to exactly 100%.')
-            return False
-        return True
+    def validate_override_threshold(self, field):
+        if self.passing_marks.data is not None and field.data is not None:
+            if field.data > self.passing_marks.data:
+                raise ValidationError("Override threshold cannot exceed passing marks.")

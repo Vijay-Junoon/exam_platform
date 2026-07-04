@@ -48,17 +48,10 @@
                 </div>
 
                 <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <label for="num_questions" class="form-label form-label-custom">Number of Questions (1 - 20)</label>
-                        {{ form.num_questions(class="form-control form-control-custom" + (" is-invalid" if form.num_questions.errors else ""), type="number", min="1", max="20") }}
+                    <div class="col-md-12">
+                        <label for="num_questions" class="form-label form-label-custom">Number of Questions (1 - 40)</label>
+                        {{ form.num_questions(class="form-control form-control-custom" + (" is-invalid" if form.num_questions.errors else ""), type="number", min="1", max="40") }}
                         {% for error in form.num_questions.errors %}
-                            <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    <div class="col-md-6">
-                        <label for="difficulty_level" class="form-label form-label-custom">Target Difficulty Level</label>
-                        {{ form.difficulty_level(class="form-select form-control-custom" + (" is-invalid" if form.difficulty_level.errors else "")) }}
-                        {% for error in form.difficulty_level.errors %}
                             <div class="invalid-feedback">{{ error }}</div>
                         {% endfor %}
                     </div>

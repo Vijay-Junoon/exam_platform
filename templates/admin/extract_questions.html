@@ -31,21 +31,13 @@
                 </div>
 
                 <div class="row g-3 mb-4">
-                    <div class="col-md-6">
+                    <div class="col-md-12">
                         <label for="subject" class="form-label form-label-custom">Default Subject / Domain</label>
                         {{ form.subject(class="form-control form-control-custom" + (" is-invalid" if form.subject.errors else ""), placeholder="e.g. Operating Systems") }}
                         {% for error in form.subject.errors %}
                             <div class="invalid-feedback">{{ error }}</div>
                         {% endfor %}
                         <small class="text-secondary mt-1 d-block">Used as fallback if subject cannot be determined from text.</small>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="difficulty_level" class="form-label form-label-custom">Default Difficulty Level</label>
-                        {{ form.difficulty_level(class="form-select form-control-custom" + (" is-invalid" if form.difficulty_level.errors else "")) }}
-                        {% for error in form.difficulty_level.errors %}
-                            <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                        <small class="text-secondary mt-1 d-block">Used as fallback if difficulty cannot be determined from text.</small>
                     </div>
                 </div>
 

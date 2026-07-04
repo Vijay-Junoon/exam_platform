@@ -7,11 +7,9 @@ class QuestionService:
         return Question.query.get(question_id)
 
     @staticmethod
-    def get_all_questions(difficulty=None, subject=None):
-        """Retrieves all questions from the database, filtered optionally by difficulty and subject."""
+    def get_all_questions(subject=None):
+        """Retrieves all questions from the database, filtered optionally by subject."""
         query = Question.query
-        if difficulty:
-            query = query.filter_by(difficulty_level=difficulty)
         if subject:
             query = query.filter(Question.subject.ilike(f"%{subject}%"))
         return query.order_by(Question.created_at.desc()).all()
@@ -23,7 +21,7 @@ class QuestionService:
         return [s[0] for s in subjects if s[0]]
 
     @staticmethod
-    def create_question(question_text, option_a, option_b, option_c, option_d, correct_answer, difficulty_level, subject, creator_id):
+    def create_question(question_text, option_a, option_b, option_c, option_d, correct_answer, subject, creator_id):
         """Creates a single question in the question bank."""
         new_question = Question(
             question_text=question_text,
@@ -32,7 +30,6 @@ class QuestionService:
             option_c=option_c,
             option_d=option_d,
             correct_answer=correct_answer.upper(),
-            difficulty_level=difficulty_level.lower(),
             subject=subject.strip(),
             created_by=creator_id
         )
@@ -45,7 +42,7 @@ class QuestionService:
             return None, f"Error saving question: {str(e)}"
 
     @staticmethod
-    def update_question(question_id, question_text, option_a, option_b, option_c, option_d, correct_answer, difficulty_level, subject):
+    def update_question(question_id, question_text, option_a, option_b, option_c, option_d, correct_answer, subject):
         """Updates an existing question."""
         question = Question.query.get(question_id)
         if not question:
@@ -57,7 +54,6 @@ class QuestionService:
         question.option_c = option_c
         question.option_d = option_d
         question.correct_answer = correct_answer.upper()
-        question.difficulty_level = difficulty_level.lower()
         question.subject = subject.strip()
 
         try:
@@ -85,7 +81,6 @@ class QuestionService:
     def bulk_insert_questions(questions_list, creator_id):
         """Inserts a list of dictionary questions directly into the database."""
         inserted_count = 0
-        errors = []
         for q_data in questions_list:
             question = Question(
                 question_text=q_data.get('question'),
@@ -94,7 +89,6 @@ class QuestionService:
                 option_c=q_data.get('option_c'),
                 option_d=q_data.get('option_d'),
                 correct_answer=q_data.get('correct_answer').upper(),
-                difficulty_level=q_data.get('difficulty', 'medium').lower(),
                 subject=q_data.get('subject', 'General').strip(),
                 created_by=creator_id
             )

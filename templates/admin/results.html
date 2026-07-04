@@ -8,12 +8,12 @@
     </div>
 </div>
 
-{% set total_attempts_count = legacy_attempts|length %}
+{% set ns = namespace(total_attempts_count=legacy_attempts|length) %}
 {% for exam, attempts in grouped_attempts %}
-    {% set total_attempts_count = total_attempts_count + attempts|length %}
+    {% set ns.total_attempts_count = ns.total_attempts_count + attempts|length %}
 {% endfor %}
 
-{% if total_attempts_count == 0 %}
+{% if ns.total_attempts_count == 0 %}
     <div class="card-glass p-5">
         <div class="text-center py-5">
             <i class="fa-solid fa-graduation-cap text-muted fs-1 mb-3"></i>
@@ -29,7 +29,7 @@
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
                     <div>
                         <h3 class="h4 text-white mb-1"><i class="fa-solid fa-file-signature text-primary me-2"></i>{{ exam.title }}</h3>
-                        <p class="text-secondary mb-0">Subject: <strong>{{ exam.subject }}</strong> | Duration: {{ exam.exam_duration }} mins | Questions: {{ exam.total_questions }}</p>
+                        <p class="text-secondary mb-0">Subject: <strong>{{ exam.subject }}</strong> | Duration: {{ exam.exam_duration }} mins | Questions: {{ exam.total_questions }} | Pass Marks: <strong>{{ exam.passing_marks }}</strong> | Override Threshold: <strong>{{ exam.override_threshold }}</strong></p>
                     </div>
                     <span class="badge bg-primary px-3 py-2 font-weight-bold fs-7">{{ attempts|length }} Attempts</span>
                 </div>
@@ -58,7 +58,7 @@
                                         <span class="text-white">{{ attempt.start_time.strftime('%Y-%m-%d %H:%M') }}</span>
                                     </td>
                                     <td class="text-center">
-                                        <span class="font-weight-bold text-white fs-6">{{ attempt.score }}</span>
+                                        <span class="font-weight-bold text-white fs-6">{{ attempt.formatted_score }}</span>
                                         <span class="text-secondary">/ {{ attempt.exam_questions|length }}</span>
                                     </td>
                                     <td class="text-center font-weight-bold text-white">{{ attempt.percentage_score }}%</td>
@@ -88,25 +88,29 @@
                                             </span>
                                         {% endif %}
                                     </td>
-                                    <td class="text-end">
-                                        {% if not attempt.passed or attempt.manually_passed %}
-                                            {% set is_borderline = attempt.percentage_score >= 30.0 and attempt.percentage_score < 40.0 %}
-                                            <form action="{{ url_for('admin.toggle_pass', attempt_id=attempt.id) }}" method="POST">
-                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                {% if attempt.manually_passed %}
-                                                    <button type="submit" class="btn btn-sm btn-outline-custom border-warning text-warning">
-                                                        <i class="fa-solid fa-rotate-left me-1"></i> Revoke
-                                                    </button>
-                                                {% else %}
-                                                    <button type="submit" class="btn btn-sm {% if is_borderline %}btn-warning text-dark font-weight-bold{% else %}btn-outline-custom{% endif %}">
-                                                        <i class="fa-solid fa-user-check me-1"></i> Pass
-                                                    </button>
-                                                {% endif %}
-                                            </form>
-                                        {% else %}
-                                            <span class="text-muted text-secondary" style="font-size: 0.85rem;">Standard Pass</span>
-                                        {% endif %}
-                                    </td>
+                                     <td class="text-end">
+                                     {% if attempt.manually_passed %}
+                                         <form action="{{ url_for('admin.toggle_pass', attempt_id=attempt.id) }}" method="POST">
+                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                             <button type="submit" class="btn btn-sm btn-outline-custom border-warning text-warning">
+                                                 <i class="fa-solid fa-rotate-left me-1"></i> Revoke
+                                             </button>
+                                         </form>
+                                     {% elif not attempt.passed %}
+                                         {% if attempt.can_override %}
+                                             <form action="{{ url_for('admin.toggle_pass', attempt_id=attempt.id) }}" method="POST">
+                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                 <button type="submit" class="btn btn-sm btn-warning text-dark font-weight-bold">
+                                                     <i class="fa-solid fa-user-check me-1"></i> Pass
+                                                 </button>
+                                             </form>
+                                         {% else %}
+                                             <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2.5 py-1.5 fs-7" title="Score is below the override threshold."><i class="fa-solid fa-lock me-1"></i> Locked</span>
+                                         {% endif %}
+                                     {% else %}
+                                         <span class="text-muted text-secondary" style="font-size: 0.85rem;">Standard Pass</span>
+                                     {% endif %}
+                                 </td>
                                 </tr>
                             {% endfor %}
                         </tbody>
@@ -151,7 +155,7 @@
                                     <span class="text-white">{{ attempt.start_time.strftime('%Y-%m-%d %H:%M') }}</span>
                                 </td>
                                 <td class="text-center">
-                                    <span class="font-weight-bold text-white fs-6">{{ attempt.score }}</span>
+                                    <span class="font-weight-bold text-white fs-6">{{ attempt.formatted_score }}</span>
                                     <span class="text-secondary">/ {{ attempt.exam_questions|length }}</span>
                                 </td>
                                 <td class="text-center font-weight-bold text-white">{{ attempt.percentage_score }}%</td>
@@ -182,23 +186,27 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-end">
-                                    {% if not attempt.passed or attempt.manually_passed %}
-                                        {% set is_borderline = attempt.percentage_score >= 30.0 and attempt.percentage_score < 40.0 %}
-                                        <form action="{{ url_for('admin.toggle_pass', attempt_id=attempt.id) }}" method="POST">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            {% if attempt.manually_passed %}
-                                                <button type="submit" class="btn btn-sm btn-outline-custom border-warning text-warning">
-                                                    <i class="fa-solid fa-rotate-left me-1"></i> Revoke
-                                                </button>
-                                            {% else %}
-                                                <button type="submit" class="btn btn-sm {% if is_borderline %}btn-warning text-dark font-weight-bold{% else %}btn-outline-custom{% endif %}">
-                                                    <i class="fa-solid fa-user-check me-1"></i> Pass
-                                                </button>
-                                            {% endif %}
-                                        </form>
-                                    {% else %}
-                                        <span class="text-muted text-secondary" style="font-size: 0.85rem;">Standard Pass</span>
-                                    {% endif %}
+                                     {% if attempt.manually_passed %}
+                                         <form action="{{ url_for('admin.toggle_pass', attempt_id=attempt.id) }}" method="POST">
+                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                             <button type="submit" class="btn btn-sm btn-outline-custom border-warning text-warning">
+                                                 <i class="fa-solid fa-rotate-left me-1"></i> Revoke
+                                             </button>
+                                         </form>
+                                     {% elif not attempt.passed %}
+                                         {% if attempt.can_override %}
+                                             <form action="{{ url_for('admin.toggle_pass', attempt_id=attempt.id) }}" method="POST">
+                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                 <button type="submit" class="btn btn-sm btn-warning text-dark font-weight-bold">
+                                                     <i class="fa-solid fa-user-check me-1"></i> Pass
+                                                 </button>
+                                             </form>
+                                         {% else %}
+                                             <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2.5 py-1.5 fs-7" title="Score is below the override threshold."><i class="fa-solid fa-lock me-1"></i> Locked</span>
+                                         {% endif %}
+                                     {% else %}
+                                         <span class="text-muted text-secondary" style="font-size: 0.85rem;">Standard Pass</span>
+                                     {% endif %}
                                 </td>
                             </tr>
                         {% endfor %}

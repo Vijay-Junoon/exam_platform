@@ -54,7 +54,7 @@
 
 <div class="row g-4">
     <!-- Active Exam Configuration panel -->
-    <div class="col-lg-6">
+    <div class="col-12">
         <div class="card-glass p-4 h-100">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4 class="mb-0"><i class="fa-solid fa-sliders text-primary me-2"></i>Exam Parameters</h4>
@@ -74,67 +74,19 @@
                             <td class="text-end font-weight-bold text-white fs-5">{{ exam_config.exam_duration }} mins</td>
                         </tr>
                         <tr>
-                            <td class="text-secondary ps-0" colspan="2"><hr class="my-2" style="border-color: var(--card-border);"></td>
+                            <td class="text-secondary ps-0"><i class="fa-solid fa-graduation-cap me-2"></i> Exam Pattern</td>
+                            <td class="text-end font-weight-bold text-white fs-5">{{ exam_config.pattern }}</td>
                         </tr>
                         <tr>
-                            <td class="text-secondary ps-0">Difficulty Allocation</td>
-                            <td class="text-end">
-                                <div class="d-flex flex-wrap gap-2 justify-content-end mt-1">
-                                    <span class="badge badge-difficulty badge-easy">Easy: {{ exam_config.easy_percentage }}%</span>
-                                    <span class="badge badge-difficulty badge-medium">Medium: {{ exam_config.medium_percentage }}%</span>
-                                    <span class="badge badge-difficulty badge-complex">Complex: {{ exam_config.complex_percentage }}%</span>
-                                    <span class="badge badge-difficulty badge-very_complex">V.Complex: {{ exam_config.very_complex_percentage }}%</span>
-                                </div>
-                            </td>
+                            <td class="text-secondary ps-0"><i class="fa-solid fa-circle-check me-2"></i> Default Passing Marks</td>
+                            <td class="text-end font-weight-bold text-white fs-5">{{ exam_config.passing_marks }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-secondary ps-0"><i class="fa-solid fa-shield-halved me-2"></i> Default Override Threshold</td>
+                            <td class="text-end font-weight-bold text-white fs-5">{{ exam_config.override_threshold }}</td>
                         </tr>
                     </tbody>
                 </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Question bank allocation breakdown -->
-    <div class="col-lg-6">
-        <div class="card-glass p-4 h-100">
-            <h4 class="mb-4"><i class="fa-solid fa-chart-pie text-accent me-2"></i>Question Bank Density</h4>
-            
-            <div class="d-flex flex-column gap-3">
-                <div>
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="text-secondary">Easy Questions</span>
-                        <span class="font-weight-bold">{{ difficulty_counts.easy }}</span>
-                    </div>
-                    <div class="progress" style="height: 6px; background-color: rgba(255,255,255,0.05);">
-                        <div class="progress-bar bg-success" style="width: {% if total_questions > 0 %}{{ (difficulty_counts.easy/total_questions)*100 }}{% else %}0{% endif %}%"></div>
-                    </div>
-                </div>
-                <div>
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="text-secondary">Medium Questions</span>
-                        <span class="font-weight-bold">{{ difficulty_counts.medium }}</span>
-                    </div>
-                    <div class="progress" style="height: 6px; background-color: rgba(255,255,255,0.05);">
-                        <div class="progress-bar bg-warning" style="width: {% if total_questions > 0 %}{{ (difficulty_counts.medium/total_questions)*100 }}{% else %}0{% endif %}%"></div>
-                    </div>
-                </div>
-                <div>
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="text-secondary">Complex Questions</span>
-                        <span class="font-weight-bold">{{ difficulty_counts.complex }}</span>
-                    </div>
-                    <div class="progress" style="height: 6px; background-color: rgba(255,255,255,0.05);">
-                        <div class="progress-bar bg-primary" style="width: {% if total_questions > 0 %}{{ (difficulty_counts.complex/total_questions)*100 }}{% else %}0{% endif %}%"></div>
-                    </div>
-                </div>
-                <div>
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="text-secondary">Very Complex Questions</span>
-                        <span class="font-weight-bold">{{ difficulty_counts.very_complex }}</span>
-                    </div>
-                    <div class="progress" style="height: 6px; background-color: rgba(255,255,255,0.05);">
-                        <div class="progress-bar bg-danger" style="width: {% if total_questions > 0 %}{{ (difficulty_counts.very_complex/total_questions)*100 }}{% else %}0{% endif %}%"></div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

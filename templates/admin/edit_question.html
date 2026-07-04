@@ -57,21 +57,14 @@
                 </div>
 
                 <div class="row g-3 mb-4">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label for="correct_answer" class="form-label form-label-custom">Correct Answer</label>
                         {{ form.correct_answer(class="form-select form-control-custom" + (" is-invalid" if form.correct_answer.errors else "")) }}
                         {% for error in form.correct_answer.errors %}
                             <div class="invalid-feedback">{{ error }}</div>
                         {% endfor %}
                     </div>
-                    <div class="col-md-4">
-                        <label for="difficulty_level" class="form-label form-label-custom">Difficulty Level</label>
-                        {{ form.difficulty_level(class="form-select form-control-custom" + (" is-invalid" if form.difficulty_level.errors else "")) }}
-                        {% for error in form.difficulty_level.errors %}
-                            <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label for="subject" class="form-label form-label-custom">Subject / Topic</label>
                         {{ form.subject(class="form-control form-control-custom" + (" is-invalid" if form.subject.errors else ""), placeholder="e.g. Operating Systems") }}
                         {% for error in form.subject.errors %}

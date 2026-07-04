@@ -27,10 +27,10 @@
                     <tr>
                         <th style="width: 25%;">Exam Title</th>
                         <th style="width: 15%;">Subject</th>
-                        <th style="width: 15%;">Questions Pool Status</th>
+                        <th style="width: 20%;">Questions Pool Status</th>
                         <th style="width: 15%;">Duration</th>
-                        <th style="width: 20%;">Difficulty Breakdown</th>
-                        <th style="width: 10%;" class="text-end">Actions</th>
+                        <th style="width: 10%;">Pattern</th>
+                        <th style="width: 15%;" class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -62,12 +62,9 @@
                                 <span class="text-white font-weight-bold">{{ exam.exam_duration }} mins</span>
                             </td>
                             <td>
-                                <div class="d-flex flex-wrap gap-1.5 mt-1">
-                                    <span class="badge badge-difficulty badge-easy py-1">E: {{ exam.easy_percentage }}%</span>
-                                    <span class="badge badge-difficulty badge-medium py-1">M: {{ exam.medium_percentage }}%</span>
-                                    <span class="badge badge-difficulty badge-complex py-1">C: {{ exam.complex_percentage }}%</span>
-                                    <span class="badge badge-difficulty badge-very_complex py-1">V: {{ exam.very_complex_percentage }}%</span>
-                                </div>
+                                <span class="badge {% if exam.pattern == 'GATE' %}bg-danger-subtle text-danger border-danger-subtle{% else %}bg-primary-subtle text-primary border-primary-subtle{% endif %} border px-3 py-1.5 fs-7">
+                                    {{ exam.pattern }}
+                                </span>
                             </td>
                             <td class="text-end">
                                 <div class="d-flex justify-content-end gap-2">

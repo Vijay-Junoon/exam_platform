@@ -13,6 +13,9 @@ class ExamConfiguration(db.Model):
     easy_percentage = db.Column(db.Integer, nullable=False, default=20)
     exam_duration = db.Column(db.Integer, nullable=False, default=60) # duration in minutes
     use_difficulty_distribution = db.Column(db.Boolean, nullable=False, default=True)
+    pattern = db.Column(db.String(20), nullable=False, default='HR')
+    passing_marks = db.Column(db.Float, nullable=False, default=4.0)
+    override_threshold = db.Column(db.Float, nullable=False, default=3.0)
 
     def validate_percentages(self):
         """Helper to ensure percentages sum to 100."""
@@ -40,6 +43,9 @@ class Exam(db.Model):
     easy_percentage = db.Column(db.Integer, nullable=False, default=20)
     exam_duration = db.Column(db.Integer, nullable=False, default=15) # duration in minutes
     use_difficulty_distribution = db.Column(db.Boolean, nullable=False, default=True)
+    pattern = db.Column(db.String(20), nullable=False, default='HR')
+    passing_marks = db.Column(db.Float, nullable=False, default=4.0)
+    override_threshold = db.Column(db.Float, nullable=False, default=3.0)
 
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
@@ -66,7 +72,7 @@ class ExamAttempt(db.Model):
     exam_id = db.Column(db.Integer, db.ForeignKey('exams.id', ondelete='CASCADE'), nullable=True)
     start_time = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     end_time = db.Column(db.DateTime(timezone=True), nullable=True)
-    score = db.Column(db.Integer, default=0, nullable=False)
+    score = db.Column(db.Float, default=0.0, nullable=False)
     violation_count = db.Column(db.Integer, default=0, nullable=False)
     manually_passed = db.Column(db.Boolean, default=False, nullable=False)
     completed = db.Column(db.Boolean, default=False, nullable=False)
@@ -87,12 +93,47 @@ class ExamAttempt(db.Model):
 
     @property
     def passed(self):
-        """True if manual pass is granted, or standard score is >= 40% (20/50 etc.)."""
-        # If manually passed by admin, always True
+        """True if manual pass is granted, or raw score is >= passing_marks."""
         if self.manually_passed:
             return True
-        # Standard passing threshold is 40%
-        return self.percentage_score >= 40.0
+            
+        if self.exam:
+            passing_marks = self.exam.passing_marks
+        else:
+            config = ExamConfiguration.query.first()
+            passing_marks = config.passing_marks if config else 4.0
+            
+        return self.score >= passing_marks
+
+    @property
+    def can_override(self):
+        """True if candidate score is >= override_threshold and < passing_marks."""
+        if self.exam:
+            passing_marks = self.exam.passing_marks
+            override_threshold = self.exam.override_threshold
+        else:
+            config = ExamConfiguration.query.first()
+            if config:
+                passing_marks = config.passing_marks
+                override_threshold = config.override_threshold
+            else:
+                passing_marks = 4.0
+                override_threshold = 3.0
+                
+        return self.score >= override_threshold and self.score < passing_marks
+
+    @property
+    def pattern(self):
+        if self.exam:
+            return self.exam.pattern
+        config = ExamConfiguration.query.first()
+        return config.pattern if config else 'HR'
+
+    @property
+    def formatted_score(self):
+        if self.score == int(self.score):
+            return int(self.score)
+        return round(self.score, 2)
 
     def __repr__(self):
         return f"<ExamAttempt {self.id} User={self.user_id} Score={self.score} Completed={self.completed}>"

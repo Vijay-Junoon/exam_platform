@@ -30,18 +30,7 @@
 <!-- Filters Panel -->
 <div class="card-glass p-4 mb-4">
     <form method="GET" action="{{ url_for('admin.list_questions') }}" class="row g-3 align-items-end">
-        <div class="col-md-4 col-sm-6">
-            <label for="difficulty" class="form-label form-label-custom">Filter by Difficulty</label>
-            <select name="difficulty" id="difficulty" class="form-select form-control-custom">
-                <option value="all" {% if current_difficulty == 'all' %}selected{% endif %}>All Difficulties</option>
-                <option value="easy" {% if current_difficulty == 'easy' %}selected{% endif %}>Easy</option>
-                <option value="medium" {% if current_difficulty == 'medium' %}selected{% endif %}>Medium</option>
-                <option value="complex" {% if current_difficulty == 'complex' %}selected{% endif %}>Complex</option>
-                <option value="very_complex" {% if current_difficulty == 'very_complex' %}selected{% endif %}>Very Complex</option>
-            </select>
-        </div>
-        
-        <div class="col-md-4 col-sm-6">
+        <div class="col-md-6">
             <label for="subject" class="form-label form-label-custom">Filter by Subject</label>
             <select name="subject" id="subject" class="form-select form-control-custom">
                 <option value="all" {% if current_subject == 'all' %}selected{% endif %}>All Subjects</option>
@@ -51,7 +40,7 @@
             </select>
         </div>
         
-        <div class="col-md-4">
+        <div class="col-md-6">
             <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-outline-custom w-100 py-2">
                     <i class="fa-solid fa-filter me-1"></i> Apply Filters
@@ -77,9 +66,8 @@
             <table class="table table-custom text-light align-middle mb-0">
                 <thead>
                     <tr>
-                        <th style="width: 45%;">Question Details</th>
+                        <th style="width: 60%;">Question Details</th>
                         <th style="width: 15%;">Subject</th>
-                        <th style="width: 15%;">Difficulty</th>
                         <th style="width: 10%;" class="text-center">Key</th>
                         <th style="width: 15%;" class="text-end">Actions</th>
                     </tr>
@@ -97,11 +85,6 @@
                                 </div>
                             </td>
                             <td><span class="text-white">{{ q.subject }}</span></td>
-                            <td>
-                                <span class="badge badge-difficulty badge-{{ q.difficulty_level }}">
-                                    {{ q.difficulty_level | replace('_', ' ') }}
-                                </span>
-                            </td>
                             <td class="text-center"><span class="badge bg-primary px-3 py-2 font-weight-bold" style="font-size: 0.9rem;">{{ q.correct_answer }}</span></td>
                             <td class="text-end">
                                 <div class="d-flex justify-content-end gap-2">
