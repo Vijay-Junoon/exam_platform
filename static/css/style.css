@@ -154,6 +154,31 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: none;
 }
 
+.btn-danger-custom {
+    background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
+    border: none;
+    color: #ffffff !important;
+    font-family: var(--font-heading);
+    font-weight: 600;
+    border-radius: 10px;
+    padding: 0.75rem 1.75rem;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
+    transition: var(--transition);
+    text-decoration: none;
+    display: inline-block;
+}
+.btn-danger-custom:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.35);
+    opacity: 0.95;
+    color: #ffffff !important;
+}
+.btn-danger-custom:disabled {
+    background: var(--text-muted);
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
 .btn-outline-custom {
     background: transparent;
     border: 1px solid rgba(37, 99, 235, 0.2);

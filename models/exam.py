@@ -12,6 +12,7 @@ class ExamConfiguration(db.Model):
     medium_percentage = db.Column(db.Integer, nullable=False, default=30)
     easy_percentage = db.Column(db.Integer, nullable=False, default=20)
     exam_duration = db.Column(db.Integer, nullable=False, default=60) # duration in minutes
+    use_difficulty_distribution = db.Column(db.Boolean, nullable=False, default=True)
 
     def validate_percentages(self):
         """Helper to ensure percentages sum to 100."""
@@ -38,6 +39,7 @@ class Exam(db.Model):
     medium_percentage = db.Column(db.Integer, nullable=False, default=30)
     easy_percentage = db.Column(db.Integer, nullable=False, default=20)
     exam_duration = db.Column(db.Integer, nullable=False, default=15) # duration in minutes
+    use_difficulty_distribution = db.Column(db.Boolean, nullable=False, default=True)
 
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 

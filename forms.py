@@ -1,7 +1,7 @@
 from flask_wtf import FlaskForm
-from flask_wtf.file import FileField, FileAllowed
-from wtforms import StringField, PasswordField, SubmitField, SelectField, TextAreaField, IntegerField
-from wtforms.validators import DataRequired, Email, Length, EqualTo, NumberRange, ValidationError
+from flask_wtf.file import FileField, FileAllowed, FileRequired
+from wtforms import StringField, PasswordField, SubmitField, SelectField, TextAreaField, IntegerField, BooleanField
+from wtforms.validators import DataRequired, Email, Length, EqualTo, NumberRange, ValidationError, Optional
 
 class RegistrationForm(FlaskForm):
     """Teacher registration form."""
@@ -65,16 +65,21 @@ class ExamConfigForm(FlaskForm):
         DataRequired(),
         NumberRange(min=1, max=200, message="Exam must contain between 1 and 200 questions.")
     ])
+    use_difficulty_distribution = BooleanField('Use Difficulty-Wise Allocation', default=True)
     very_complex_percentage = IntegerField('Very Complex %', validators=[
+        Optional(),
         NumberRange(min=0, max=100)
     ])
     complex_percentage = IntegerField('Complex %', validators=[
+        Optional(),
         NumberRange(min=0, max=100)
     ])
     medium_percentage = IntegerField('Medium %', validators=[
+        Optional(),
         NumberRange(min=0, max=100)
     ])
     easy_percentage = IntegerField('Easy %', validators=[
+        Optional(),
         NumberRange(min=0, max=100)
     ])
     exam_duration = IntegerField('Exam Duration (minutes)', validators=[
@@ -88,6 +93,9 @@ class ExamConfigForm(FlaskForm):
         initial_validation = super(ExamConfigForm, self).validate(extra_validators=extra_validators)
         if not initial_validation:
             return False
+
+        if not self.use_difficulty_distribution.data:
+            return True
 
         vc = self.very_complex_percentage.data or 0
         c = self.complex_percentage.data or 0
@@ -139,30 +147,53 @@ class AIQuestionGenerationForm(FlaskForm):
         return True
 
 
+class ExtractQuestionsPDFForm(FlaskForm):
+    """Form to upload questions PDF and extract using GROQ AI (Admin only)."""
+    pdf_file = FileField('Upload Questions PDF', validators=[
+        FileRequired(message="Please select a PDF file to upload."),
+        FileAllowed(['pdf'], 'Only PDF documents are allowed.')
+    ])
+    subject = StringField('Default Subject/Topic Name', validators=[
+        DataRequired(),
+        Length(max=100)
+    ], default='General')
+    difficulty_level = SelectField('Default Difficulty Level', choices=[
+        ('easy', 'Easy'),
+        ('medium', 'Medium'),
+        ('complex', 'Complex'),
+        ('very_complex', 'Very Complex')
+    ], validators=[DataRequired()], default='medium')
+    submit = SubmitField('Extract & Import Questions')
+
+
 class ExamForm(FlaskForm):
     """Form to create or edit examinations (Admin only)."""
     title = StringField('Exam Title', validators=[
         DataRequired(),
         Length(min=3, max=150, message="Title must be between 3 and 150 characters.")
     ])
-    subject = StringField('Subject/Category', validators=[
-        DataRequired(),
-        Length(min=1, max=100, message="Subject must be between 1 and 100 characters.")
+    subject = SelectField('Subject/Category', choices=[], validators=[
+        DataRequired(message="Please select a subject.")
     ])
     total_questions = IntegerField('Total Exam Questions', validators=[
         DataRequired(),
         NumberRange(min=1, max=200, message="Exam must contain between 1 and 200 questions.")
     ])
+    use_difficulty_distribution = BooleanField('Use Difficulty-Wise Allocation', default=True)
     very_complex_percentage = IntegerField('Very Complex %', validators=[
+        Optional(),
         NumberRange(min=0, max=100)
     ])
     complex_percentage = IntegerField('Complex %', validators=[
+        Optional(),
         NumberRange(min=0, max=100)
     ])
     medium_percentage = IntegerField('Medium %', validators=[
+        Optional(),
         NumberRange(min=0, max=100)
     ])
     easy_percentage = IntegerField('Easy %', validators=[
+        Optional(),
         NumberRange(min=0, max=100)
     ])
     exam_duration = IntegerField('Exam Duration (minutes)', validators=[
@@ -176,6 +207,9 @@ class ExamForm(FlaskForm):
         initial_validation = super(ExamForm, self).validate(extra_validators=extra_validators)
         if not initial_validation:
             return False
+
+        if not self.use_difficulty_distribution.data:
+            return True
 
         vc = self.very_complex_percentage.data or 0
         c = self.complex_percentage.data or 0

@@ -4,7 +4,7 @@ from flask_login import login_required, current_user
 from services.question_service import QuestionService
 from services.exam_service import ExamService
 from services.groq_service import GroqService
-from forms import QuestionForm, ExamConfigForm, AIQuestionGenerationForm, ExamForm
+from forms import QuestionForm, ExamConfigForm, AIQuestionGenerationForm, ExamForm, ExtractQuestionsPDFForm
 from models import User, Question, ExamAttempt, Exam, db
 
 admin_bp = Blueprint('admin', __name__)
@@ -183,6 +183,21 @@ def delete_question(id):
     return redirect(url_for('admin.list_questions'))
 
 
+@admin_bp.route('/admin/questions/delete-all', methods=['POST'])
+@login_required
+@admin_required
+def delete_all_questions():
+    """Deletes all questions from the database."""
+    try:
+        num_deleted = Question.query.delete(synchronize_session=False)
+        db.session.commit()
+        flash(f"Successfully deleted all {num_deleted} questions from the database.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Failed to delete all questions: {str(e)}", "danger")
+    return redirect(url_for('admin.list_questions'))
+
+
 @admin_bp.route('/admin/config', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -198,7 +213,8 @@ def configure_exam():
             complex_pct=form.complex_percentage.data,
             medium_pct=form.medium_percentage.data,
             easy_pct=form.easy_percentage.data,
-            duration=form.exam_duration.data
+            duration=form.exam_duration.data,
+            use_difficulty_dist=form.use_difficulty_distribution.data
         )
         if error:
             flash(error, 'danger')
@@ -223,6 +239,21 @@ def extract_text_from_pdf(file_stream):
     except Exception as e:
         current_app.logger.error(f"PDF extraction error: {e}")
         return ""
+
+
+def extract_pages_from_pdf(file_stream):
+    """Helper to extract a list of page texts from a PDF file stream using pypdf."""
+    from pypdf import PdfReader
+    try:
+        reader = PdfReader(file_stream)
+        pages = []
+        for page in reader.pages:
+            content = page.extract_text()
+            pages.append(content or "")
+        return pages
+    except Exception as e:
+        current_app.logger.error(f"PDF page extraction error: {e}")
+        return []
 
 
 @admin_bp.route('/admin/generate-questions', methods=['GET', 'POST'])
@@ -270,6 +301,69 @@ def generate_questions():
                 return redirect(url_for('admin.list_questions'))
                 
     return render_template('admin/generate_questions.html', form=form)
+
+
+@admin_bp.route('/admin/extract-questions', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def extract_questions():
+    """Extracts questions from a PDF using GROQ LLM API and inserts them into DB."""
+    form = ExtractQuestionsPDFForm()
+    if form.validate_on_submit():
+        api_key = current_app.config.get('GROQ_API_KEY')
+        
+        if not form.pdf_file.data:
+            flash("Please upload a PDF file.", "danger")
+            return render_template('admin/extract_questions.html', form=form)
+            
+        # Extract pages from the uploaded PDF
+        pages = extract_pages_from_pdf(form.pdf_file.data.stream)
+        # Filter out empty pages
+        pages = [p.strip() for p in pages if p.strip()]
+        if not pages:
+            flash("Failed to extract readable text from the uploaded PDF. Please make sure it is not scanned or password protected.", "danger")
+            return render_template('admin/extract_questions.html', form=form)
+            
+        # Group pages into batches of 3 to prevent LLM output token limits and input constraints
+        batch_size = 3
+        page_batches = []
+        for i in range(0, len(pages), batch_size):
+            batch_text = "\n\n--- Page Break ---\n\n".join(pages[i:i+batch_size])
+            page_batches.append(batch_text)
+            
+        # Process each batch
+        questions_extracted = []
+        extraction_errors = []
+        
+        for idx, batch_text in enumerate(page_batches):
+            batch_qs, error = GroqService.extract_questions_from_text(
+                pdf_text=batch_text,
+                subject=form.subject.data,
+                difficulty_level=form.difficulty_level.data,
+                api_key=api_key
+            )
+            if error:
+                current_app.logger.warning(f"Error extracting batch {idx+1}: {error}")
+                extraction_errors.append(f"Segment {idx+1}: {error}")
+            elif batch_qs:
+                questions_extracted.extend(batch_qs)
+                
+        if not questions_extracted:
+            error_msg = "Failed to extract any questions from the PDF. Errors: " + "; ".join(extraction_errors[:3])
+            flash(error_msg, 'danger')
+        else:
+            # Bulk insert questions
+            count, db_error = QuestionService.bulk_insert_questions(questions_extracted, current_user.id)
+            if db_error:
+                flash(db_error, 'danger')
+            else:
+                success_msg = f"Success! {count} questions extracted from PDF and loaded into the database."
+                if extraction_errors:
+                    success_msg += f" Note: {len(extraction_errors)} segments failed to process due to limits/errors."
+                flash(success_msg, 'success')
+                return redirect(url_for('admin.list_questions'))
+                
+    return render_template('admin/extract_questions.html', form=form)
 
 
 @admin_bp.route('/admin/results')
@@ -325,6 +419,13 @@ def list_exams():
 def create_exam():
     """Handles creation of a new examination."""
     form = ExamForm()
+    
+    # Populate subjects dynamically from the question bank
+    subjects = QuestionService.get_all_subjects()
+    if not subjects:
+        subjects = ['General']
+    form.subject.choices = [(s, s) for s in subjects]
+
     if request.method == 'GET':
         # pre-populate with default config
         config = ExamService.get_or_create_config()
@@ -334,17 +435,19 @@ def create_exam():
         form.medium_percentage.data = config.medium_percentage
         form.easy_percentage.data = config.easy_percentage
         form.exam_duration.data = config.exam_duration
+        form.use_difficulty_distribution.data = config.use_difficulty_distribution
 
     if form.validate_on_submit():
         exam = Exam(
             title=form.title.data,
             subject=form.subject.data,
             total_questions=form.total_questions.data,
-            very_complex_percentage=form.very_complex_percentage.data,
-            complex_percentage=form.complex_percentage.data,
-            medium_percentage=form.medium_percentage.data,
-            easy_percentage=form.easy_percentage.data,
-            exam_duration=form.exam_duration.data
+            very_complex_percentage=form.very_complex_percentage.data or 0,
+            complex_percentage=form.complex_percentage.data or 0,
+            medium_percentage=form.medium_percentage.data or 0,
+            easy_percentage=form.easy_percentage.data or 0,
+            exam_duration=form.exam_duration.data,
+            use_difficulty_distribution=form.use_difficulty_distribution.data
         )
         db.session.add(exam)
         try:
@@ -366,15 +469,24 @@ def edit_exam(id):
     exam = Exam.query.get_or_404(id)
     form = ExamForm(obj=exam)
 
+    # Populate subjects dynamically from the question bank
+    subjects = QuestionService.get_all_subjects()
+    if exam.subject and exam.subject not in subjects:
+        subjects.append(exam.subject)
+    if not subjects:
+        subjects = ['General']
+    form.subject.choices = [(s, s) for s in subjects]
+
     if form.validate_on_submit():
         exam.title = form.title.data
         exam.subject = form.subject.data
         exam.total_questions = form.total_questions.data
-        exam.very_complex_percentage = form.very_complex_percentage.data
-        exam.complex_percentage = form.complex_percentage.data
-        exam.medium_percentage = form.medium_percentage.data
-        exam.easy_percentage = form.easy_percentage.data
+        exam.very_complex_percentage = form.very_complex_percentage.data or 0
+        exam.complex_percentage = form.complex_percentage.data or 0
+        exam.medium_percentage = form.medium_percentage.data or 0
+        exam.easy_percentage = form.easy_percentage.data or 0
         exam.exam_duration = form.exam_duration.data
+        exam.use_difficulty_distribution = form.use_difficulty_distribution.data
 
         try:
             db.session.commit()

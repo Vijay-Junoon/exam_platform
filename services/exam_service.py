@@ -16,16 +16,17 @@ class ExamService:
                 complex_percentage=20,
                 medium_percentage=30,
                 easy_percentage=30,
-                exam_duration=15 # 15 minutes default
+                exam_duration=15, # 15 minutes default
+                use_difficulty_distribution=True
             )
             db.session.add(config)
             db.session.commit()
         return config
 
     @staticmethod
-    def update_config(total_questions, very_complex_pct, complex_pct, medium_pct, easy_pct, duration):
-        """Updates the exam configuration. Ensures percentages sum to 100."""
-        if (very_complex_pct + complex_pct + medium_pct + easy_pct) != 100:
+    def update_config(total_questions, very_complex_pct, complex_pct, medium_pct, easy_pct, duration, use_difficulty_dist):
+        """Updates the exam configuration. Ensures percentages sum to 100 if distribution is active."""
+        if use_difficulty_dist and (very_complex_pct + complex_pct + medium_pct + easy_pct) != 100:
             return None, "Error: Difficulty percentages must sum to exactly 100%."
             
         config = ExamService.get_or_create_config()
@@ -35,6 +36,7 @@ class ExamService:
         config.medium_percentage = medium_pct
         config.easy_percentage = easy_pct
         config.exam_duration = duration
+        config.use_difficulty_distribution = use_difficulty_dist
 
         try:
             db.session.commit()
@@ -123,50 +125,55 @@ class ExamService:
         if total_available < total_req:
             return None, f"Insufficient questions in the question bank for subject '{subject}'. Required: {total_req}, Available: {total_available}. Please contact the administrator."
 
-        # Calculate target counts per difficulty
-        targets = {
-            'very_complex': int(round((exam.very_complex_percentage / 100.0) * total_req)),
-            'complex': int(round((exam.complex_percentage / 100.0) * total_req)),
-            'medium': int(round((exam.medium_percentage / 100.0) * total_req)),
-            'easy': int(round((exam.easy_percentage / 100.0) * total_req))
-        }
-
-        # Adjust for rounding discrepancies to ensure total sum is exactly total_req
-        current_sum = sum(targets.values())
-        if current_sum != total_req:
-            diff = total_req - current_sum
-            # Add/subtract the difference to the difficulty with the largest allocation
-            max_diff = max(targets, key=targets.get)
-            targets[max_diff] += diff
-
         selected_questions = []
-        fallback_pool = []
 
-        # Pull random questions for each difficulty matching the subject
-        for diff_level, count in targets.items():
-            if count <= 0:
-                continue
-            # Query random questions for this level and subject
-            q_level = Question.query.filter_by(subject=subject, difficulty_level=diff_level).order_by(func.random()).all()
-            
-            taken = q_level[:count]
-            selected_questions.extend(taken)
-            
-            # Store leftovers for fallback
-            fallback_pool.extend(q_level[count:])
+        if exam.use_difficulty_distribution:
+            # Calculate target counts per difficulty
+            targets = {
+                'very_complex': int(round((exam.very_complex_percentage / 100.0) * total_req)),
+                'complex': int(round((exam.complex_percentage / 100.0) * total_req)),
+                'medium': int(round((exam.medium_percentage / 100.0) * total_req)),
+                'easy': int(round((exam.easy_percentage / 100.0) * total_req))
+            }
 
-        # If we couldn't fulfill the difficulty quotas due to shortage in specific levels of this subject
-        if len(selected_questions) < total_req:
-            needed = total_req - len(selected_questions)
-            # Add general leftover questions from fallback_pool (which already only contains questions of this subject)
-            random.shuffle(fallback_pool)
-            selected_questions.extend(fallback_pool[:needed])
+            # Adjust for rounding discrepancies to ensure total sum is exactly total_req
+            current_sum = sum(targets.values())
+            if current_sum != total_req:
+                diff = total_req - current_sum
+                # Add/subtract the difference to the difficulty with the largest allocation
+                max_diff = max(targets, key=targets.get)
+                targets[max_diff] += diff
 
-        # If still short (edge case of database count vs config total), fetch any remaining question of this subject not selected
-        if len(selected_questions) < total_req:
-            selected_ids = [q.id for q in selected_questions]
-            rems = Question.query.filter(Question.subject == subject, ~Question.id.in_(selected_ids)).order_by(func.random()).all()
-            selected_questions.extend(rems[:(total_req - len(selected_questions))])
+            fallback_pool = []
+
+            # Pull random questions for each difficulty matching the subject
+            for diff_level, count in targets.items():
+                if count <= 0:
+                    continue
+                # Query random questions for this level and subject
+                q_level = Question.query.filter_by(subject=subject, difficulty_level=diff_level).order_by(func.random()).all()
+                
+                taken = q_level[:count]
+                selected_questions.extend(taken)
+                
+                # Store leftovers for fallback
+                fallback_pool.extend(q_level[count:])
+
+            # If we couldn't fulfill the difficulty quotas due to shortage in specific levels of this subject
+            if len(selected_questions) < total_req:
+                needed = total_req - len(selected_questions)
+                # Add general leftover questions from fallback_pool (which already only contains questions of this subject)
+                random.shuffle(fallback_pool)
+                selected_questions.extend(fallback_pool[:needed])
+
+            # If still short (edge case of database count vs config total), fetch any remaining question of this subject not selected
+            if len(selected_questions) < total_req:
+                selected_ids = [q.id for q in selected_questions]
+                rems = Question.query.filter(Question.subject == subject, ~Question.id.in_(selected_ids)).order_by(func.random()).all()
+                selected_questions.extend(rems[:(total_req - len(selected_questions))])
+        else:
+            # Query random questions irrespective of difficulty
+            selected_questions = Question.query.filter_by(subject=subject).order_by(func.random()).limit(total_req).all()
 
         # Final check
         if len(selected_questions) < total_req:

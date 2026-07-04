@@ -38,42 +38,50 @@
                     </div>
                 </div>
 
-                <h5 class="border-bottom pb-2 mb-3 text-secondary" style="font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;">Difficulty Distribution Ratios</h5>
-
-                <div class="row g-3 mb-4">
-                    <div class="col-6 col-md-3">
-                        <label for="easy_percentage" class="form-label form-label-custom">Easy %</label>
-                        {{ form.easy_percentage(class="form-control form-control-custom pct-input" + (" is-invalid" if form.easy_percentage.errors else ""), type="number", min="0", max="100") }}
-                        {% for error in form.easy_percentage.errors %}
-                            <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <label for="medium_percentage" class="form-label form-label-custom">Medium %</label>
-                        {{ form.medium_percentage(class="form-control form-control-custom pct-input" + (" is-invalid" if form.medium_percentage.errors else ""), type="number", min="0", max="100") }}
-                        {% for error in form.medium_percentage.errors %}
-                            <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <label for="complex_percentage" class="form-label form-label-custom">Complex %</label>
-                        {{ form.complex_percentage(class="form-control form-control-custom pct-input" + (" is-invalid" if form.complex_percentage.errors else ""), type="number", min="0", max="100") }}
-                        {% for error in form.complex_percentage.errors %}
-                            <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <label for="very_complex_percentage" class="form-label form-label-custom">Very Complex %</label>
-                        {{ form.very_complex_percentage(class="form-control form-control-custom pct-input" + (" is-invalid" if form.very_complex_percentage.errors else ""), type="number", min="0", max="100") }}
-                        {% for error in form.very_complex_percentage.errors %}
-                            <div class="invalid-feedback">{{ error }}</div>
-                        {% endfor %}
-                    </div>
+                <div class="mb-4 form-check form-switch">
+                    {{ form.use_difficulty_distribution(class="form-check-input" + (" is-invalid" if form.use_difficulty_distribution.errors else ""), id="use_difficulty_distribution_checkbox") }}
+                    <label class="form-check-label text-white" for="use_difficulty_distribution_checkbox">Enable Difficulty-Wise Question Allocation</label>
+                    <small class="text-secondary mt-1 d-block">When disabled, random questions will be selected irrespective of difficulty.</small>
                 </div>
 
-                <div class="card-glass p-3 mb-4 text-center border-secondary bg-dark-subtle">
-                    <span class="text-secondary me-2">Running Percentage Total:</span>
-                    <strong id="pct-running-total" class="fs-5 text-white">0%</strong>
+                <div id="difficulty-distribution-section">
+                    <h5 class="border-bottom pb-2 mb-3 text-secondary" style="font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;">Difficulty Distribution Ratios</h5>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-6 col-md-3">
+                            <label for="easy_percentage" class="form-label form-label-custom">Easy %</label>
+                            {{ form.easy_percentage(class="form-control form-control-custom pct-input" + (" is-invalid" if form.easy_percentage.errors else ""), type="number", min="0", max="100") }}
+                            {% for error in form.easy_percentage.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label for="medium_percentage" class="form-label form-label-custom">Medium %</label>
+                            {{ form.medium_percentage(class="form-control form-control-custom pct-input" + (" is-invalid" if form.medium_percentage.errors else ""), type="number", min="0", max="100") }}
+                            {% for error in form.medium_percentage.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label for="complex_percentage" class="form-label form-label-custom">Complex %</label>
+                            {{ form.complex_percentage(class="form-control form-control-custom pct-input" + (" is-invalid" if form.complex_percentage.errors else ""), type="number", min="0", max="100") }}
+                            {% for error in form.complex_percentage.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label for="very_complex_percentage" class="form-label form-label-custom">Very Complex %</label>
+                            {{ form.very_complex_percentage(class="form-control form-control-custom pct-input" + (" is-invalid" if form.very_complex_percentage.errors else ""), type="number", min="0", max="100") }}
+                            {% for error in form.very_complex_percentage.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="card-glass p-3 mb-4 text-center border-secondary bg-dark-subtle">
+                        <span class="text-secondary me-2">Running Percentage Total:</span>
+                        <strong id="pct-running-total" class="fs-5 text-white">0%</strong>
+                    </div>
                 </div>
 
                 <button type="submit" id="config-submit-btn" class="btn btn-primary-custom w-100 py-2.5">
@@ -91,6 +99,8 @@
     const pctInputs = document.querySelectorAll('.pct-input');
     const runningTotal = document.getElementById('pct-running-total');
     const submitBtn = document.getElementById('config-submit-btn');
+    const toggleCheckbox = document.getElementById('use_difficulty_distribution_checkbox');
+    const diffSection = document.getElementById('difficulty-distribution-section');
 
     function calculateTotal() {
         let total = 0;
@@ -106,8 +116,18 @@
             submitBtn.disabled = false;
         } else {
             runningTotal.className = 'fs-5 text-danger font-weight-bold';
-            // We can disable or keep it enabled and rely on backend validation
-            // Keeping it enabled so backend gets to validate with detailed WTForms error msg
+        }
+    }
+
+    function toggleDifficultySection() {
+        if (toggleCheckbox.checked) {
+            diffSection.style.display = 'block';
+            pctInputs.forEach(input => input.disabled = false);
+            calculateTotal();
+        } else {
+            diffSection.style.display = 'none';
+            pctInputs.forEach(input => input.disabled = true);
+            submitBtn.disabled = false; // Allow submission when disabled
         }
     }
 
@@ -115,7 +135,10 @@
         input.addEventListener('input', calculateTotal);
     });
 
+    toggleCheckbox.addEventListener('change', toggleDifficultySection);
+
     // Run once on load
     calculateTotal();
+    toggleDifficultySection();
 </script>
 {% endblock %}
