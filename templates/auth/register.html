@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Register - ExamSphere{% endblock %}
+{% block title %}Register - MVSR Exam Platform{% endblock %}
 {% block content %}
 <div class="row justify-content-center align-items-center" style="min-height: 70vh;">
     <div class="col-md-6 col-lg-5">
         <div class="card-glass p-5">
             <div class="text-center mb-4">
                 <i class="fa-solid fa-user-plus text-primary mb-3" style="font-size: 2.5rem; text-shadow: 0 0 20px var(--primary-glow);"></i>
-                <h2>Teacher Registration</h2>
-                <p class="text-secondary">Create a teacher account to take examinations</p>
+                <h2>Faculty Registration</h2>
+                <p class="text-secondary">Create a faculty account to take examinations</p>
             </div>
             
             <form method="POST" action="" novalidate>
@@ -29,6 +29,36 @@
                     </label>
                     {{ form.email(class="form-control form-control-custom" + (" is-invalid" if form.email.errors else ""), placeholder="name@domain.com") }}
                     {% for error in form.email.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="dept" class="form-label form-label-custom">
+                        <i class="fa-solid fa-building me-1"></i> Faculty Dept
+                    </label>
+                    {{ form.dept(class="form-control form-control-custom" + (" is-invalid" if form.dept.errors else ""), placeholder="e.g. Computer Science") }}
+                    {% for error in form.dept.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="faculty_role" class="form-label form-label-custom">
+                        <i class="fa-solid fa-briefcase me-1"></i> Faculty Role
+                    </label>
+                    {{ form.faculty_role(class="form-control form-control-custom" + (" is-invalid" if form.faculty_role.errors else ""), placeholder="e.g. Assistant Professor") }}
+                    {% for error in form.faculty_role.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="subject" class="form-label form-label-custom">
+                        <i class="fa-solid fa-book-open me-1"></i> Faculty Subject
+                    </label>
+                    {{ form.subject(class="form-control form-control-custom" + (" is-invalid" if form.subject.errors else ""), placeholder="e.g. Database Management") }}
+                    {% for error in form.subject.errors %}
                         <div class="invalid-feedback">{{ error }}</div>
                     {% endfor %}
                 </div>

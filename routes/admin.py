@@ -26,7 +26,7 @@ def dashboard():
     """Renders the main admin landing page showing quick metrics."""
     db.session.rollback()
     total_questions = Question.query.count()
-    total_teachers = User.query.filter_by(role='teacher').count()
+    total_faculty = User.query.filter_by(role='faculty').count()
     total_attempts = ExamAttempt.query.count()
     completed_attempts = ExamAttempt.query.filter_by(completed=True).count()
     
@@ -73,7 +73,7 @@ def dashboard():
     
     return render_template('admin/dashboard.html',
                            total_questions=total_questions,
-                           total_teachers=total_teachers,
+                           total_faculty=total_faculty,
                            total_attempts=total_attempts,
                            completed_attempts=completed_attempts,
                            exam_config=config,
@@ -353,15 +353,16 @@ def extract_questions():
 @login_required
 @admin_required
 def view_results():
-    """Lists teacher exam attempt details, tracking scores and browser violations, grouped by exam."""
+    """Lists faculty exam attempt details, tracking scores and browser violations, grouped by exam."""
     db.session.rollback()
+    from sqlalchemy.orm import joinedload
     exams = Exam.query.order_by(Exam.created_at.desc()).all()
     grouped_attempts = []
     for exam in exams:
-        attempts = ExamAttempt.query.filter_by(exam_id=exam.id).order_by(ExamAttempt.start_time.desc()).all()
+        attempts = ExamAttempt.query.options(joinedload(ExamAttempt.user)).filter_by(exam_id=exam.id).order_by(ExamAttempt.start_time.desc()).all()
         grouped_attempts.append((exam, attempts))
         
-    legacy_attempts = ExamAttempt.query.filter_by(exam_id=None).order_by(ExamAttempt.start_time.desc()).all()
+    legacy_attempts = ExamAttempt.query.options(joinedload(ExamAttempt.user)).filter_by(exam_id=None).order_by(ExamAttempt.start_time.desc()).all()
     
     return render_template('admin/results.html', 
                            grouped_attempts=grouped_attempts, 
@@ -372,7 +373,7 @@ def view_results():
 @login_required
 @admin_required
 def toggle_pass(attempt_id):
-    """Allows manual pass adjustment for borderline scoring teachers."""
+    """Allows manual pass adjustment for borderline scoring faculty."""
     success, error = ExamService.toggle_manual_pass(attempt_id)
     if success:
         flash("Candidate status updated successfully.", "success")

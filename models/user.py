@@ -11,7 +11,10 @@ class User(UserMixin, db.Model):
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default='teacher') # 'admin' or 'teacher'
+    role = db.Column(db.String(20), nullable=False, default='faculty') # 'admin' or 'faculty'
+    dept = db.Column(db.String(100), nullable=True)
+    faculty_role = db.Column(db.String(100), nullable=True)
+    subject = db.Column(db.String(100), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
@@ -31,9 +34,9 @@ class User(UserMixin, db.Model):
         return self.role == 'admin'
 
     @property
-    def is_teacher(self):
-        """Returns True if the user is a teacher."""
-        return self.role == 'teacher'
+    def is_faculty(self):
+        """Returns True if the user is a faculty member."""
+        return self.role == 'faculty'
 
     def __repr__(self):
         return f"<User {self.email} ({self.role})>"

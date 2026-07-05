@@ -49,7 +49,7 @@ def create_app():
     # Custom context processors or CLI commands
     @app.cli.command("seed-db")
     def seed_db():
-        """Seeds default Admin/Teacher accounts and a few questions."""
+        """Seeds default Admin/Faculty accounts and a few questions."""
         print("Starting database seeding...")
         
         # 1. Create Default Config if missing
@@ -68,16 +68,16 @@ def create_app():
         else:
             print(f"Admin user '{admin_email}' already exists.")
 
-        # 3. Seed Default Teacher
-        teacher_email = "teacher@exam.com"
-        teacher = User.query.filter_by(email=teacher_email).first()
-        if not teacher:
-            teacher = User(name="Jane Doe", email=teacher_email, role="teacher")
-            teacher.set_password("teacher123")
-            db.session.add(teacher)
-            print(f"Created default Teacher user: {teacher_email} / teacher123")
+        # 3. Seed Default Faculty
+        faculty_email = "faculty@exam.com"
+        faculty = User.query.filter_by(email=faculty_email).first()
+        if not faculty:
+            faculty = User(name="Jane Doe", email=faculty_email, role="faculty")
+            faculty.set_password("faculty123")
+            db.session.add(faculty)
+            print(f"Created default Faculty user: {faculty_email} / faculty123")
         else:
-            print(f"Teacher user '{teacher_email}' already exists.")
+            print(f"Faculty user '{faculty_email}' already exists.")
 
         db.session.commit()
 

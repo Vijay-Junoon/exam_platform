@@ -12,13 +12,20 @@ class AuthService:
         return User.query.filter(User.email.ilike(email)).first()
 
     @staticmethod
-    def register_user(name, email, password, role='teacher'):
+    def register_user(name, email, password, role='faculty', dept=None, faculty_role=None, subject=None):
         """Registers a new user, checks duplicates and hashes password."""
         existing_user = AuthService.get_user_by_email(email)
         if existing_user:
             return None, "A user with this email address already exists."
         
-        new_user = User(name=name, email=email, role=role)
+        new_user = User(
+            name=name,
+            email=email,
+            role=role,
+            dept=dept,
+            faculty_role=faculty_role,
+            subject=subject
+        )
         new_user.set_password(password)
         
         try:

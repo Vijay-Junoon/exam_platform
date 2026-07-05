@@ -64,7 +64,7 @@ class Exam(db.Model):
 
 
 class ExamAttempt(db.Model):
-    """Tracks every exam attempt made by a teacher."""
+    """Tracks every exam attempt made by a faculty."""
     __tablename__ = 'exam_attempts'
 
     id = db.Column(db.Integer, primary_key=True)

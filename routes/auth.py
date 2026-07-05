@@ -7,7 +7,7 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
-    """Renders registration page for teachers."""
+    """Renders registration page for faculty."""
     if current_user.is_authenticated:
         if current_user.is_admin:
             return redirect(url_for('admin.dashboard'))
@@ -19,7 +19,10 @@ def register():
             name=form.name.data,
             email=form.email.data,
             password=form.password.data,
-            role='teacher' # default registration is for teachers
+            role='faculty', # default registration is for faculty
+            dept=form.dept.data,
+            faculty_role=form.faculty_role.data,
+            subject=form.subject.data
         )
         if error:
             flash(error, 'danger')
@@ -32,7 +35,7 @@ def register():
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    """Processes user logins (Teachers and Admins)."""
+    """Processes user logins (Faculty and Admins)."""
     if current_user.is_authenticated:
         if current_user.is_admin:
             return redirect(url_for('admin.dashboard'))

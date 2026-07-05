@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}AI Question Generator - ExamSphere{% endblock %}
+{% block title %}AI Question Generator - MVSR Exam Platform{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-8">
@@ -7,13 +7,13 @@
             <a href="{{ url_for('admin.list_questions') }}" class="btn btn-outline-custom me-3 py-1.5 px-3">
                 <i class="fa-solid fa-arrow-left"></i> Back
             </a>
-            <h1 class="h2 mb-0"><i class="fa-solid fa-robot text-accent me-2"></i>AI Question Generator</h1>
+            <h1 class="h2 mb-0">Question Generator</h1>
         </div>
 
         <div class="card-glass p-5">
             <div class="alert alert-info alert-custom mb-4" role="alert">
                 <i class="fa-solid fa-circle-info me-2 text-info"></i>
-                This tool connects to the <b>GROQ API</b> to automatically construct multiple-choice questions. It then inserts the generated questions directly into your database.
+                Automatically construct multiple-choice questions and load them into database.
             </div>
 
             <form method="POST" action="" id="ai-generation-form" enctype="multipart/form-data">

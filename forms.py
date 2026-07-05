@@ -4,7 +4,7 @@ from wtforms import StringField, PasswordField, SubmitField, SelectField, TextAr
 from wtforms.validators import DataRequired, Email, Length, EqualTo, NumberRange, ValidationError, Optional
 
 class RegistrationForm(FlaskForm):
-    """Teacher registration form."""
+    """Faculty registration form."""
     name = StringField('Full Name', validators=[
         DataRequired(),
         Length(min=2, max=100, message="Name must be between 2 and 100 characters.")
@@ -12,6 +12,18 @@ class RegistrationForm(FlaskForm):
     email = StringField('Email Address', validators=[
         DataRequired(),
         Email(message="Invalid email address.")
+    ])
+    dept = StringField('Faculty Dept', validators=[
+        DataRequired(),
+        Length(max=100, message="Department name must not exceed 100 characters.")
+    ])
+    faculty_role = StringField('Faculty Role', validators=[
+        DataRequired(),
+        Length(max=100, message="Role/Designation must not exceed 100 characters.")
+    ])
+    subject = StringField('Faculty Subject', validators=[
+        DataRequired(),
+        Length(max=100, message="Subject name must not exceed 100 characters.")
     ])
     password = PasswordField('Password', validators=[
         DataRequired(),
@@ -25,7 +37,7 @@ class RegistrationForm(FlaskForm):
 
 
 class LoginForm(FlaskForm):
-    """User login form (both admin and teacher)."""
+    """User login form (both admin and faculty)."""
     email = StringField('Email Address', validators=[
         DataRequired(),
         Email(message="Invalid email address.")

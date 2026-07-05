@@ -7,12 +7,12 @@ from models import db, ExamAttempt, ExamQuestion
 
 exam_bp = Blueprint('exam', __name__)
 
-def teacher_required(f):
-    """Decorator to restrict access to teachers only."""
+def faculty_required(f):
+    """Decorator to restrict access to faculty only."""
     from functools import wraps
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_teacher:
+        if not current_user.is_authenticated or not current_user.is_faculty:
             if current_user.is_authenticated and current_user.is_admin:
                 return redirect(url_for('admin.dashboard'))
             return redirect(url_for('auth.login'))
@@ -31,7 +31,7 @@ def index():
 
 @exam_bp.route('/exam/intro')
 @login_required
-@teacher_required
+@faculty_required
 def intro():
     """Renders the listing of all available exams."""
     # Check if there is an active exam running already
@@ -51,7 +51,7 @@ def intro():
     for sub, count in counts:
         subject_counts[sub] = count
 
-    # List past attempts for this teacher
+    # List past attempts for this faculty
     past_attempts = ExamAttempt.query.filter_by(user_id=current_user.id, completed=True)\
                                       .order_by(ExamAttempt.end_time.desc()).all()
 
@@ -64,7 +64,7 @@ def intro():
 
 @exam_bp.route('/exam/intro/<int:exam_id>')
 @login_required
-@teacher_required
+@faculty_required
 def exam_instructions(exam_id):
     """Instructions page before starting a specific exam. Explains fullscreen requirements."""
     # Check if there is an active exam running already
@@ -88,7 +88,7 @@ def exam_instructions(exam_id):
 
 @exam_bp.route('/exam/start/<int:exam_id>', methods=['POST'])
 @login_required
-@teacher_required
+@faculty_required
 def start_exam(exam_id):
     """Starts the exam, allocates questions, and redirects to the first question."""
     attempt, error = ExamService.create_exam_attempt(current_user.id, exam_id)
@@ -101,7 +101,7 @@ def start_exam(exam_id):
 
 @exam_bp.route('/exam/question', methods=['GET'])
 @login_required
-@teacher_required
+@faculty_required
 def show_question():
     """Renders the single active question in sequence. Optimized to minimize query latency."""
     attempt = ExamService.get_active_attempt(current_user.id)
@@ -139,7 +139,7 @@ def show_question():
 
 @exam_bp.route('/exam/submit-answer', methods=['POST'])
 @login_required
-@teacher_required
+@faculty_required
 def submit_answer():
     """Submits the answer for the current question and advances to the next."""
     attempt = ExamService.get_active_attempt(current_user.id)
@@ -165,51 +165,57 @@ def submit_answer():
         flash(error or "Error submitting answer.", "danger")
         return redirect(url_for('exam.intro'))
 
+    # Fetch correct answer for feedback
+    from models import Question
+    question = Question.query.get(question_id)
+    correct_answer = question.correct_answer if question else 'A'
+    is_correct = (selected_answer.upper() == correct_answer.upper())
+
     # Eager load attempt and its associated questions to optimize next question retrieval in AJAX
     db_attempt = ExamAttempt.query.options(
         joinedload(ExamAttempt.exam_questions).joinedload(ExamQuestion.question)
     ).get(attempt.id)
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
-    if db_attempt.completed:
-        if is_ajax:
-            return jsonify({
-                'completed': True, 
-                'redirect_url': url_for('exam.completed', attempt_id=db_attempt.id)
-            })
-        return redirect(url_for('exam.completed', attempt_id=db_attempt.id))
-
     if is_ajax:
         # Fetch the next question details to send back to JS in-memory
-        eq, progress_text = ExamService.get_current_question_from_attempt(db_attempt)
-        if not eq:
-            # Fallback if no questions left but completed was False
-            ExamService.force_submit_exam(db_attempt.id)
-            return jsonify({
-                'completed': True, 
-                'redirect_url': url_for('exam.completed', attempt_id=db_attempt.id)
-            })
+        next_data = None
+        if not db_attempt.completed:
+            eq, progress_text = ExamService.get_current_question_from_attempt(db_attempt)
+            if not eq:
+                # Fallback if no questions left but completed was False
+                ExamService.force_submit_exam(db_attempt.id)
+                db_attempt.completed = True
+            else:
+                next_data = {
+                    'question_id': eq.question.id,
+                    'question_text': eq.question.question_text,
+                    'option_a': eq.question.option_a,
+                    'option_b': eq.question.option_b,
+                    'option_c': eq.question.option_c,
+                    'option_d': eq.question.option_d,
+                    'progress_text': progress_text
+                }
             
         _, remaining_seconds = ExamService.check_timer_expired_with_attempt(db_attempt)
         
         return jsonify({
-            'completed': False,
-            'question_id': eq.question.id,
-            'question_text': eq.question.question_text,
-            'option_a': eq.question.option_a,
-            'option_b': eq.question.option_b,
-            'option_c': eq.question.option_c,
-            'option_d': eq.question.option_d,
-            'progress_text': progress_text,
+            'completed': db_attempt.completed,
+            'redirect_url': url_for('exam.completed', attempt_id=db_attempt.id),
+            'is_correct': is_correct,
+            'correct_answer': correct_answer,
+            'next_question': next_data,
             'remaining_seconds': remaining_seconds
         })
 
+    if db_attempt.completed:
+        return redirect(url_for('exam.completed', attempt_id=db_attempt.id))
     return redirect(url_for('exam.show_question'))
 
 
 @exam_bp.route('/exam/violation', methods=['POST'])
 @login_required
-@teacher_required
+@faculty_required
 def log_violation():
     """AJAX endpoint to record fullscreen or focus tab-switching violations."""
     attempt = ExamService.get_active_attempt(current_user.id)
@@ -228,9 +234,9 @@ def log_violation():
 
 @exam_bp.route('/exam/completed/<int:attempt_id>')
 @login_required
-@teacher_required
+@faculty_required
 def completed(attempt_id):
-    """Renders the final scorecard screen for the teacher, masking admin overrides or status."""
+    """Renders the final scorecard screen for the faculty, masking admin overrides or status."""
     attempt = ExamAttempt.query.get_or_404(attempt_id)
     
     # Ensure this attempt belongs to the logged-in user

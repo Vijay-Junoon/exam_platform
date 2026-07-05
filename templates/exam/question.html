@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Question - ExamSphere{% endblock %}
+{% block title %}Question - MVSR Exam Platform{% endblock %}
 {% block head %}
 <!-- Custom styles to hide standard elements during exam -->
 <style>
@@ -13,6 +13,16 @@
     }
     footer {
         display: none !important;
+    }
+    .option-correct {
+        border-color: #10b981 !important; /* Green */
+        background-color: rgba(16, 185, 129, 0.15) !important;
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.3) !important;
+    }
+    .option-incorrect {
+        border-color: #ef4444 !important; /* Red */
+        background-color: rgba(239, 68, 68, 0.15) !important;
+        box-shadow: 0 0 10px rgba(239, 68, 68, 0.3) !important;
     }
 </style>
 {% endblock %}
@@ -100,12 +110,18 @@
     const submitBtn = document.getElementById('submit-btn');
     const form = document.getElementById('question-submit-form');
     
+    let showingFeedback = false;
+    let nextQuestionData = null;
+    let redirectUrlOnComplete = "";
+
     // Watch for radio button changes to enable submit button
     function setupRadioListeners() {
         const currentRadios = document.querySelectorAll('.mcq-radio-input');
         currentRadios.forEach(radio => {
             radio.addEventListener('change', () => {
-                submitBtn.disabled = false;
+                if (!showingFeedback) {
+                    submitBtn.disabled = false;
+                }
             });
         });
     }
@@ -116,6 +132,57 @@
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         
+        if (showingFeedback) {
+            // User clicked "Next Question" or "Finish Exam"
+            if (nextQuestionData === null) {
+                // Exit fullscreen and redirect
+                window.location.href = redirectUrlOnComplete;
+            } else {
+                // Update DOM with next question details
+                
+                // 1. Update progress text
+                document.querySelector('h4.text-white').innerText = nextQuestionData.progress_text;
+                
+                // 2. Update question text
+                document.querySelector('h3.text-white').innerText = nextQuestionData.question_text;
+                
+                // 3. Update hidden input question_id
+                document.querySelector('input[name="question_id"]').value = nextQuestionData.question_id;
+                
+                // 4. Update MCQ option texts
+                document.querySelectorAll('.mcq-option-label').forEach(label => {
+                    const badgeValue = label.querySelector('.mcq-badge').innerText;
+                    const optionTextEl = label.querySelector('.option-text');
+                    
+                    if (badgeValue === 'A') optionTextEl.innerText = nextQuestionData.option_a;
+                    else if (badgeValue === 'B') optionTextEl.innerText = nextQuestionData.option_b;
+                    else if (badgeValue === 'C') optionTextEl.innerText = nextQuestionData.option_c;
+                    else if (badgeValue === 'D') optionTextEl.innerText = nextQuestionData.option_d;
+                    
+                    // Clear any highlighting classes from previous feedback
+                    label.classList.remove('option-correct', 'option-incorrect');
+                });
+                
+                // 5. Reset and enable all radio buttons
+                const radios = document.querySelectorAll('.mcq-radio-input');
+                radios.forEach(radio => {
+                    radio.checked = false;
+                    radio.disabled = false;
+                });
+                
+                // 6. Setup listeners again since DOM option elements remain
+                setupRadioListeners();
+                
+                // Reset submit button text and disable it until new selection is made
+                submitBtn.innerHTML = 'Submit Answer <i class="fa-solid fa-arrow-right ms-2"></i>';
+                submitBtn.disabled = true;
+                showingFeedback = false;
+                nextQuestionData = null;
+            }
+            return;
+        }
+
+        // Submitting current answer
         submitBtn.disabled = true;
         const formData = new FormData(form);
         
@@ -133,44 +200,40 @@
             return response.json();
         })
         .then(data => {
-            if (data.completed) {
-                // Exit fullscreen and redirect
-                window.location.href = data.redirect_url;
-            } else {
-                // Update DOM with next question details
-                
-                // 1. Update progress text
-                document.querySelector('h4.text-white').innerText = data.progress_text;
-                
-                // 2. Update question text
-                document.querySelector('h3.text-white').innerText = data.question_text;
-                
-                // 3. Update hidden input question_id
-                document.querySelector('input[name="question_id"]').value = data.question_id;
-                
-                // 4. Update MCQ option texts
-                document.querySelectorAll('.mcq-option-label').forEach(label => {
-                    const badgeValue = label.querySelector('.mcq-badge').innerText;
-                    const optionTextEl = label.querySelector('.option-text');
-                    
-                    if (badgeValue === 'A') optionTextEl.innerText = data.option_a;
-                    else if (badgeValue === 'B') optionTextEl.innerText = data.option_b;
-                    else if (badgeValue === 'C') optionTextEl.innerText = data.option_c;
-                    else if (badgeValue === 'D') optionTextEl.innerText = data.option_d;
-                });
-                
-                // 5. Reset all radio buttons
-                const radios = document.querySelectorAll('.mcq-radio-input');
-                radios.forEach(radio => {
-                    radio.checked = false;
-                });
-                
-                // 6. Setup listeners again since DOM option elements remain
-                setupRadioListeners();
-                
-                // Keep submit button disabled until new selection is made
-                submitBtn.disabled = true;
+            // Store next question details for the next click
+            nextQuestionData = data.next_question;
+            redirectUrlOnComplete = data.redirect_url;
+            
+            // Disable all radio buttons so they cannot change answer
+            document.querySelectorAll('.mcq-radio-input').forEach(r => r.disabled = true);
+            
+            // Highlight correct/incorrect options
+            const selectedRadio = document.querySelector('.mcq-radio-input:checked');
+            const selectedLetter = selectedRadio ? selectedRadio.value : '';
+            const correctLetter = data.correct_answer;
+            
+            // Highlight correct answer in green
+            const correctLabel = document.querySelector('label[for="option' + correctLetter + '"]');
+            if (correctLabel) {
+                correctLabel.classList.add('option-correct');
             }
+            
+            // Highlight incorrect selection in red
+            if (selectedLetter && selectedLetter !== correctLetter) {
+                const incorrectLabel = document.querySelector('label[for="option' + selectedLetter + '"]');
+                if (incorrectLabel) {
+                    incorrectLabel.classList.add('option-incorrect');
+                }
+            }
+            
+            // Update button label
+            if (data.completed) {
+                submitBtn.innerHTML = 'Finish Exam <i class="fa-solid fa-circle-check ms-2"></i>';
+            } else {
+                submitBtn.innerHTML = 'Next Question <i class="fa-solid fa-arrow-right ms-2"></i>';
+            }
+            submitBtn.disabled = false;
+            showingFeedback = true;
         })
         .catch(err => {
             alert('Error: ' + err.message);
