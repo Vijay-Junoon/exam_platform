@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}Manage Users - MVSR Exam Platform{% endblock %}
+
+{% block content %}
+<div class="row mb-5">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="h2 mb-2">Manage User Accounts</h1>
+            <p class="text-secondary mb-0">View all registered faculty and administrator profiles, and manage system access.</p>
+        </div>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-custom">
+            <i class="fa-solid fa-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Search and Metrics Summary -->
+<div class="row g-4 mb-4">
+    <div class="col-md-8">
+        <div class="card-glass p-3">
+            <div class="input-group">
+                <span class="input-group-text bg-transparent border-secondary text-secondary">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </span>
+                <input type="text" id="userSearch" class="form-control bg-transparent border-secondary text-white" placeholder="Search by name, email, department, or role...">
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card-glass p-3 d-flex justify-content-around align-items-center text-center h-100">
+            <div>
+                <h6 class="text-secondary mb-1">Total Users</h6>
+                <h4 class="font-weight-bold text-white mb-0" id="totalCount">{{ users|length }}</h4>
+            </div>
+            <div class="border-start border-secondary h-75"></div>
+            <div>
+                <h6 class="text-secondary mb-1">Admins</h6>
+                <h4 class="font-weight-bold text-danger mb-0">
+                    {{ users | selectattr('role', 'equalto', 'admin') | list | length }}
+                </h4>
+            </div>
+            <div class="border-start border-secondary h-75"></div>
+            <div>
+                <h6 class="text-secondary mb-1">Faculty</h6>
+                <h4 class="font-weight-bold text-primary mb-0">
+                    {{ users | selectattr('role', 'equalto', 'faculty') | list | length }}
+                </h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="card-glass p-4 mb-5">
+    <div class="table-responsive">
+        <table class="table table-custom text-light align-middle mb-0" id="usersTable">
+            <thead>
+                <tr>
+                    <th style="width: 20%;">Name</th>
+                    <th style="width: 25%;">Email</th>
+                    <th style="width: 10%;" class="text-center">Role</th>
+                    <th style="width: 15%;">Department</th>
+                    <th style="width: 15%;">Role / Subject</th>
+                    <th style="width: 10%;" class="text-center">Joined Date</th>
+                    <th style="width: 5%;" class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                    <tr class="user-row">
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-circle me-3 bg-secondary d-flex align-items-center justify-content-center text-white font-weight-bold" style="width: 36px; height: 36px; border-radius: 50%; background-color: rgba(255, 255, 255, 0.1) !important; border: 1px solid rgba(255, 255, 255, 0.15);">
+                                    {{ user.name[0] | upper }}
+                                </div>
+                                <div>
+                                    <span class="font-weight-bold text-white d-block user-name">{{ user.name }}</span>
+                                    {% if user.id == current_user.id %}
+                                        <span class="badge bg-success-subtle text-success fs-8">You</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="text-secondary user-email">{{ user.email }}</span>
+                        </td>
+                        <td class="text-center">
+                            {% if user.role == 'admin' %}
+                                <span class="badge bg-danger-subtle text-danger px-2.5 py-1.5 border border-danger-subtle user-role">Admin</span>
+                            {% else %}
+                                <span class="badge bg-primary-subtle text-primary px-2.5 py-1.5 border border-primary-subtle user-role">Faculty</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="text-secondary user-dept">{{ user.dept or 'N/A' }}</span>
+                        </td>
+                        <td>
+                            <div class="text-secondary small">
+                                <span class="d-block user-frole">{{ user.faculty_role or '' }}</span>
+                                <span class="text-muted user-subject">{{ user.subject or '' }}</span>
+                                {% if not user.faculty_role and not user.subject %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <span class="text-secondary small">{{ user.created_at.strftime('%Y-%m-%d') }}</span>
+                        </td>
+                        <td class="text-center">
+                            {% if user.id == current_user.id %}
+                                <button class="btn btn-sm btn-outline-secondary border-secondary text-secondary" style="opacity: 0.6;" disabled title="You cannot delete your own account">
+                                    <i class="fa-solid fa-user-lock"></i>
+                                </button>
+                            {% else %}
+                                <button class="btn btn-sm btn-outline-danger border-danger-subtle" data-bs-toggle="modal" data-bs-target="#deleteUserModal-{{ user.id }}" title="Delete User Account">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal popups placed at top-level to prevent overlay/backdrop bugs -->
+{% for user in users %}
+    {% if user.id != current_user.id %}
+        <div class="modal fade" id="deleteUserModal-{{ user.id }}" tabindex="-1" aria-labelledby="deleteUserLabel-{{ user.id }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content shadow-lg border-0" style="background-color: rgba(255, 255, 255, 0.98) !important; color: #1e293b; backdrop-filter: blur(15px);">
+                    <div class="modal-header border-bottom border-light-subtle">
+                        <h5 class="modal-title font-weight-bold text-danger" id="deleteUserLabel-{{ user.id }}">
+                            <i class="fa-solid fa-triangle-exclamation me-2"></i>Delete User Account
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <p class="mb-3">Are you absolutely sure you want to permanently delete the user account for <strong>{{ user.name }}</strong>?</p>
+                        
+                        <div class="p-3 bg-danger-subtle border border-danger-subtle rounded text-danger mb-3" style="background-color: rgba(220, 53, 69, 0.05) !important;">
+                            <ul class="mb-0 small ps-3">
+                                <li>All exam attempts made by this user will be deleted permanently.</li>
+                                <li>All grading overrides and test result configurations for this user will be removed.</li>
+                                <li>The user will lose access to the platform immediately.</li>
+                            </ul>
+                        </div>
+                        
+                        <table class="table table-sm table-borderless text-dark mb-0 small">
+                            <tbody>
+                                <tr>
+                                    <td class="text-secondary ps-0" style="width: 30%;">Email:</td>
+                                    <td class="font-weight-bold">{{ user.email }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-secondary ps-0">Department:</td>
+                                    <td>{{ user.dept or 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-secondary ps-0">Role:</td>
+                                    <td>{{ user.role | capitalize }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="modal-footer border-top border-light-subtle">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <form action="{{ url_for('admin.delete_user', id=user.id) }}" method="POST" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-danger">Confirm Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endfor %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('userSearch');
+    const tableRows = document.querySelectorAll('.user-row');
+    const totalCountEl = document.getElementById('totalCount');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = searchInput.value.toLowerCase().trim();
+            let visibleCount = 0;
+            
+            tableRows.forEach(row => {
+                const name = row.querySelector('.user-name').textContent.toLowerCase();
+                const email = row.querySelector('.user-email').textContent.toLowerCase();
+                const role = row.querySelector('.user-role').textContent.toLowerCase();
+                const dept = row.querySelector('.user-dept').textContent.toLowerCase();
+                const frole = row.querySelector('.user-frole').textContent.toLowerCase();
+                const subject = row.querySelector('.user-subject').textContent.toLowerCase();
+                
+                const matches = name.includes(query) || 
+                                email.includes(query) || 
+                                role.includes(query) || 
+                                dept.includes(query) || 
+                                frole.includes(query) || 
+                                subject.includes(query);
+                                
+                if (matches) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            if (totalCountEl) {
+                totalCountEl.textContent = visibleCount;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

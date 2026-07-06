@@ -41,16 +41,16 @@
                                 <a class="nav-link {% if 'admin.list_exams' in request.endpoint or 'admin.create_exam' in request.endpoint or 'admin.edit_exam' in request.endpoint %}active{% endif %}" href="{{ url_for('admin.list_exams') }}">Manage Exams</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'admin.generate_questions' %}active{% endif %}" href="{{ url_for('admin.generate_questions') }}">AI Generator</a>
+                                <a class="nav-link {% if 'admin.list_users' in request.endpoint %}active{% endif %}" href="{{ url_for('admin.list_users') }}">Manage Users</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'admin.generate_questions' %}active{% endif %}" href="{{ url_for('admin.generate_questions') }}">Generator</a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link {% if request.endpoint == 'admin.view_results' %}active{% endif %}" href="{{ url_for('admin.view_results') }}">Results</a>
                             </li>
-                            <li class="nav-item me-3">
-                                <a class="nav-link {% if request.endpoint == 'admin.configure_exam' %}active{% endif %}" href="{{ url_for('admin.configure_exam') }}">Exam Config</a>
-                            </li>
                         {% else %}
-                            <li class="nav-item me-3">
+                            <li class="nav-item">
                                 <a class="nav-link {% if request.endpoint == 'exam.intro' or request.endpoint == 'exam.show_question' %}active{% endif %}" href="{{ url_for('exam.intro') }}">
                                     <i class="fa-solid fa-file-signature me-1"></i>Exams
                                 </a>

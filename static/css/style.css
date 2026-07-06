@@ -419,3 +419,47 @@ label.form-label-custom {
 .btn-close-white {
     filter: invert(0.7); /* make dark */
 }
+
+/* Premium spaced-out Navbar styling */
+.navbar {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+    background-color: rgba(15, 23, 42, 0.95) !important;
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.navbar-nav {
+    gap: 0.2rem; /* Reduced spacing gap between elements */
+}
+
+.navbar-nav .nav-item {
+    display: flex;
+    align-items: center;
+}
+
+.navbar-nav .nav-link {
+    font-family: var(--font-heading);
+    font-size: 0.92rem;
+    font-weight: 500 !important;
+    padding: 0.5rem 0.7rem !important;
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.7) !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.navbar-nav .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #ffffff !important;
+}
+
+.navbar-nav .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    color: #60a5fa !important; /* Beautiful readable blue for active status */
+}
+
+/* Ensure the user profile dropdown has appropriate vertical alignment */
+.navbar-nav .dropdown-toggle {
+    margin-left: 0.5rem;
+}
+

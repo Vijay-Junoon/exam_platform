@@ -492,3 +492,36 @@ def delete_exam(id):
         db.session.rollback()
         flash(f"Failed to delete exam: {str(e)}", "danger")
     return redirect(url_for('admin.list_exams'))
+
+
+@admin_bp.route('/admin/users')
+@login_required
+@admin_required
+def list_users():
+    """Lists all registered user accounts (Faculty & Admins) in the system."""
+    db.session.rollback()
+    users = User.query.order_by(User.role.asc(), User.created_at.desc()).all()
+    return render_template('admin/users.html', users=users)
+
+
+@admin_bp.route('/admin/users/delete/<int:id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_user(id):
+    """Deletes a user account from the system."""
+    if current_user.id == id:
+        flash("You cannot delete your own administrator account.", "danger")
+        return redirect(url_for('admin.list_users'))
+
+    user = User.query.get_or_404(id)
+    name = user.name
+    email = user.email
+    try:
+        db.session.delete(user)
+        db.session.commit()
+        flash(f"User account for '{name}' ({email}) has been deleted successfully.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Failed to delete user account: {str(e)}", "danger")
+
+    return redirect(url_for('admin.list_users'))
